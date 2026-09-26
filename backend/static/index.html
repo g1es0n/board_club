@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Клуб настольных игр</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body { background: #f5f6f8; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .clickable tbody tr { cursor: pointer; }
+  .clickable tbody tr.selected td { background: #dbe8ff; }
+  .score-input { width: 90px; }
+  .nav-link { cursor: pointer; }
+</style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand navbar-dark bg-dark px-3">
+  <span class="navbar-brand">🎲 Клуб настольных игр</span>
+  <div class="navbar-nav me-auto">
+    <a class="nav-link" data-view="rating">Рейтинг</a>
+    <a class="nav-link staff" data-view="sessions">Партии</a>
+    <a class="nav-link staff" data-view="games">Игры</a>
+    <a class="nav-link staff" data-view="players">Игроки</a>
+    <a class="nav-link admin" data-view="dicts">Столы и жанры</a>
+    <a class="nav-link staff" data-view="reports">Отчёты</a>
+  </div>
+  <span class="navbar-text me-3" id="who"></span>
+  <button class="btn btn-outline-light btn-sm" id="authBtn">Войти</button>
+</nav>
+
+<main class="container-fluid p-3">
+
+  <section class="view" id="view-rating">
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <div class="card"><div class="card-body">
+          <h5>Рейтинг клуба</h5>
+          <input class="form-control mb-2" id="ratingSearch" placeholder="Поиск по никнейму">
+          <table class="table table-sm table-hover clickable" id="ratingTable"></table>
+        </div></div>
+      </div>
+      <div class="col-lg-6"><div id="ratingCard"></div></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-sessions">
+    <div class="row g-3">
+      <div class="col-lg-5">
+        <div class="card"><div class="card-body">
+          <div class="d-flex gap-2 mb-2">
+            <select class="form-select form-select-sm" id="sessionStatus">
+              <option value="">Все статусы</option>
+              <option value="planned">Запланирована</option>
+              <option value="active">Идёт</option>
+              <option value="finished">Завершена</option>
+              <option value="cancelled">Отменена</option>
+            </select>
+            <button class="btn btn-primary btn-sm text-nowrap" id="newSessionBtn">+ Новая партия</button>
+          </div>
+          <table class="table table-sm table-hover clickable" id="sessionsTable"></table>
+          <div id="sessionsPager"></div>
+        </div></div>
+      </div>
+      <div class="col-lg-7">
+        <div class="card"><div class="card-body" id="sessionDetail">
+          <p class="text-muted mb-0">Выберите партию слева</p>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-games">
+    <div class="card"><div class="card-body">
+      <div class="row g-2 mb-2">
+        <div class="col-md-4"><input class="form-control form-control-sm" id="gameSearch" placeholder="Название"></div>
+        <div class="col-md-3"><select class="form-select form-select-sm" id="gameGenre"></select></div>
+        <div class="col-md-2"><input type="number" min="1" class="form-control form-control-sm" id="gamePlayers" placeholder="Игроков"></div>
+        <div class="col-md-3 text-end"><button class="btn btn-primary btn-sm admin" id="newGameBtn">+ Добавить игру</button></div>
+      </div>
+      <table class="table table-sm table-hover clickable" id="gamesTable"></table>
+      <div id="gamesPager"></div>
+    </div></div>
+  </section>
+
+  <section class="view" id="view-players">
+    <div class="card"><div class="card-body">
+      <div class="d-flex gap-2 mb-2">
+        <input class="form-control form-control-sm" id="playerSearch" placeholder="Имя или никнейм">
+        <div class="form-check text-nowrap align-self-center">
+          <input class="form-check-input" type="checkbox" id="playerAll">
+          <label class="form-check-label" for="playerAll">Показывать неактивных</label>
+        </div>
+        <button class="btn btn-primary btn-sm text-nowrap" id="newPlayerBtn">+ Новый игрок</button>
+      </div>
+      <table class="table table-sm table-hover clickable" id="playersTable"></table>
+      <div id="playersPager"></div>
+    </div></div>
+  </section>
+
+  <section class="view" id="view-dicts">
+    <div class="row g-3">
+      <div class="col-md-6"><div class="card"><div class="card-body">
+        <h5>Столы</h5>
+        <div class="d-flex gap-2 mb-2">
+          <input type="number" min="1" class="form-control form-control-sm" id="tableNumber" placeholder="Номер">
+          <input type="number" min="2" class="form-control form-control-sm" id="tableCapacity" placeholder="Мест">
+          <button class="btn btn-primary btn-sm" id="addTableBtn">Добавить</button>
+        </div>
+        <table class="table table-sm" id="tablesTable"></table>
+      </div></div></div>
+      <div class="col-md-6"><div class="card"><div class="card-body">
+        <h5>Жанры</h5>
+        <div class="d-flex gap-2 mb-2">
+          <input class="form-control form-control-sm" id="genreName" placeholder="Название">
+          <button class="btn btn-primary btn-sm" id="addGenreBtn">Добавить</button>
+        </div>
+        <table class="table table-sm" id="genresTable"></table>
+      </div></div></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-reports">
+    <div class="card"><div class="card-body">
+      <div class="row g-2 mb-3 align-items-end">
+        <div class="col-md-4"><label class="form-label small">Отчёт</label>
+          <select class="form-select form-select-sm" id="reportType">
+            <option value="top-players">RP-01. Топ игроков</option>
+            <option value="game-popularity">RP-02. Популярность игр</option>
+            <option value="table-load">RP-03. Загрузка столов (часы)</option>
+          </select></div>
+        <div class="col-md-2 period"><label class="form-label small">С</label><input type="date" class="form-control form-control-sm" id="reportFrom"></div>
+        <div class="col-md-2 period"><label class="form-label small">По</label><input type="date" class="form-control form-control-sm" id="reportTo"></div>
+        <div class="col-md-2 limit"><label class="form-label small">Строк</label><input type="number" min="1" max="100" value="10" class="form-control form-control-sm" id="reportLimit"></div>
+        <div class="col-md-2"><button class="btn btn-primary btn-sm w-100" id="reportBtn">Сформировать</button></div>
+      </div>
+      <table class="table table-sm table-striped" id="reportTable"></table>
+      <p class="small text-muted">Карточка игрока (RP-04) открывается из раздела «Игроки».</p>
+    </div></div>
+  </section>
+</main>
+
+<div class="modal fade" id="loginModal" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Вход для сотрудников</h5></div>
+  <div class="modal-body">
+    <input class="form-control mb-2" id="loginInput" placeholder="Логин" autocomplete="username">
+    <input class="form-control" type="password" id="passwordInput" placeholder="Пароль" autocomplete="current-password">
+  </div>
+  <div class="modal-footer"><button class="btn btn-primary w-100" id="loginBtn">Войти</button></div>
+</div></div></div>
+
+<div class="modal fade" id="gameModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="gameModalTitle">Игра</h5></div>
+  <div class="modal-body row g-2">
+    <div class="col-12"><label class="form-label small">Название *</label><input class="form-control" id="gTitle" maxlength="100"></div>
+    <div class="col-12"><label class="form-label small">Жанр *</label><select class="form-select" id="gGenre"></select></div>
+    <div class="col-6"><label class="form-label small">Мин. игроков *</label><input type="number" min="1" class="form-control" id="gMin"></div>
+    <div class="col-6"><label class="form-label small">Макс. игроков *</label><input type="number" min="1" class="form-control" id="gMax"></div>
+    <div class="col-4"><label class="form-label small">Длительность, мин *</label><input type="number" min="5" class="form-control" id="gDuration"></div>
+    <div class="col-4"><label class="form-label small">Сложность 1–5 *</label><input type="number" min="1" max="5" class="form-control" id="gComplexity"></div>
+    <div class="col-4"><label class="form-label small">Копий *</label><input type="number" min="1" class="form-control" id="gCopies"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline-danger me-auto" id="gDelete">Удалить</button>
+    <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+    <button class="btn btn-primary" id="gSave">Сохранить</button>
+  </div>
+</div></div></div>
+
+<div class="modal fade" id="playerModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="playerModalTitle">Игрок</h5></div>
+  <div class="modal-body">
+    <div class="row g-2 mb-3">
+      <div class="col-md-6"><label class="form-label small">Имя *</label><input class="form-control" id="pName" maxlength="100"></div>
+      <div class="col-md-6"><label class="form-label small">Никнейм * (3–30 символов: буквы, цифры, _)</label><input class="form-control" id="pNick" maxlength="30"></div>
+    </div>
+    <div id="playerCard"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-outline-danger me-auto" id="pDeactivate">Деактивировать</button>
+    <button class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+    <button class="btn btn-primary" id="pSave">Сохранить</button>
+  </div>
+</div></div></div>
+
+<div class="modal fade" id="sessionModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title">Новая партия</h5></div>
+  <div class="modal-body row g-2">
+    <div class="col-12"><label class="form-label small">Игра *</label><select class="form-select" id="sGame"></select></div>
+    <div class="col-12"><label class="form-label small">Стол *</label><select class="form-select" id="sTable"></select></div>
+    <div class="col-6"><label class="form-label small">Начало *</label><input type="datetime-local" class="form-control" id="sStart"></div>
+    <div class="col-6"><label class="form-label small">Окончание *</label><input type="datetime-local" class="form-control" id="sEnd"></div>
+    <div class="col-12"><label class="form-label small">Участники * (Ctrl — выбрать несколько)</label>
+      <select class="form-select" id="sPlayers" multiple size="8"></select>
+      <div class="form-text" id="sHint"></div></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+    <button class="btn btn-primary" id="sSave">Создать</button>
+  </div>
+</div></div></div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toasts"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const state = {
+  token: sessionStorage.getItem('token'),
+  user: JSON.parse(sessionStorage.getItem('user') || 'null'),
+  sessionId: null, sessionsPage: 1, gamesPage: 1, playersPage: 1,
+  gameId: null, playerId: null,
+};
+const STATUS = {
+  planned: ['Запланирована', 'secondary'], active: ['Идёт', 'primary'],
+  finished: ['Завершена', 'success'], cancelled: ['Отменена', 'danger'],
+};
+const modal = id => bootstrap.Modal.getOrCreateInstance($(id));
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDT = s => s ? new Date(s).toLocaleString('ru-RU', {dateStyle: 'short', timeStyle: 'short'}) : '';
+const fmtDate = s => s ? new Date(s).toLocaleDateString('ru-RU') : '';
+const delta = v => v == null ? '' : `<span class="text-${v > 0 ? 'success' : v < 0 ? 'danger' : 'muted'}">${v > 0 ? '+' : ''}${v}</span>`;
+const badge = st => `<span class="badge bg-${STATUS[st][1]}">${STATUS[st][0]}</span>`;
+const isAdmin = () => state.user?.role === 'admin';
+const qs = obj => new URLSearchParams(Object.entries(obj).filter(([, v]) => v !== '' && v != null)).toString();
+const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+async function api(path, {method = 'GET', body} = {}) {
+  const headers = {'Content-Type': 'application/json'};
+  if (state.token) headers.Authorization = 'Bearer ' + state.token;
+  let res;
+  try {
+    res = await fetch('/api' + path, {method, headers, body: body ? JSON.stringify(body) : undefined});
+  } catch {
+    throw new Error('Сервер недоступен, проверьте подключение');
+  }
+  if (res.status === 204) return null;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    if (res.status === 401 && state.token) setUser(null, null);
+    throw new Error(data.detail || `Ошибка ${res.status}`);
+  }
+  return data;
+}
+
+function toast(message, ok = true) {
+  const el = document.createElement('div');
+  el.className = `toast align-items-center text-bg-${ok ? 'success' : 'danger'} border-0`;
+  el.innerHTML = `<div class="d-flex"><div class="toast-body">${esc(message)}</div>
+    <button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+  $('toasts').append(el);
+  new bootstrap.Toast(el, {delay: ok ? 2500 : 6000}).show();
+  el.addEventListener('hidden.bs.toast', () => el.remove());
+}
+
+async function run(fn, successMessage) {
+  try {
+    const result = await fn();
+    if (successMessage) toast(successMessage);
+    return result;
+  } catch (e) {
+    toast(e.message, false);
+  }
+}
+
+function renderTable(el, columns, rows, onRowClick, selectedKey) {
+  el.innerHTML = `<thead><tr>${columns.map(c => `<th>${c.title}</th>`).join('')}</tr></thead>
+    <tbody>${rows.length ? rows.map((r, i) => `<tr data-i="${i}" class="${selectedKey != null && r.id === selectedKey ? 'selected' : ''}">
+      ${columns.map(c => `<td>${c.html ? c.html(r) : esc(c.fmt ? c.fmt(r[c.key], r) : r[c.key])}</td>`).join('')}</tr>`).join('')
+      : `<tr><td colspan="${columns.length}" class="text-muted text-center">Нет данных</td></tr>`}</tbody>`;
+  if (onRowClick) el.querySelectorAll('tbody tr[data-i]').forEach(tr =>
+    tr.addEventListener('click', () => onRowClick(rows[tr.dataset.i])));
+}
+
+function renderPager(el, {total, page, size}, go) {
+  const pages = Math.max(1, Math.ceil(total / size));
+  el.innerHTML = `<div class="d-flex justify-content-between align-items-center small">
+    <span class="text-muted">Всего: ${total}</span>
+    <div class="btn-group btn-group-sm">
+      <button class="btn btn-outline-secondary" ${page <= 1 ? 'disabled' : ''} data-p="${page - 1}">‹</button>
+      <span class="btn btn-outline-secondary disabled">${page} / ${pages}</span>
+      <button class="btn btn-outline-secondary" ${page >= pages ? 'disabled' : ''} data-p="${page + 1}">›</button>
+    </div></div>`;
+  el.querySelectorAll('button[data-p]').forEach(b => b.addEventListener('click', () => go(+b.dataset.p)));
+}
+
+function sparkline(values) {
+  if (values.length < 2) return '';
+  const w = 400, h = 80, min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+  const pts = values.map((v, i) => `${(i / (values.length - 1) * (w - 10) + 5).toFixed(1)},${(h - 5 - (v - min) / span * (h - 10)).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" class="w-100" style="max-height:90px">
+    <polyline points="${pts}" fill="none" stroke="#0d6efd" stroke-width="2"/></svg>
+    <div class="d-flex justify-content-between small text-muted"><span>мин. ${min}</span><span>макс. ${max}</span></div>`;
+}
+
+function showView(name) {
+  if (!state.user && name !== 'rating') name = 'rating';
+  if (name === 'dicts' && !isAdmin()) name = 'sessions';
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+  document.querySelectorAll('.nav-link').forEach(a => a.classList.toggle('active', a.dataset.view === name));
+  ({rating: loadRating, sessions: loadSessions, games: loadGames, players: loadPlayers,
+    dicts: loadDicts, reports: loadReport})[name]();
+}
+
+function setUser(token, user) {
+  state.token = token; state.user = user;
+  if (token) { sessionStorage.setItem('token', token); sessionStorage.setItem('user', JSON.stringify(user)); }
+  else { sessionStorage.clear(); }
+  document.querySelectorAll('.staff').forEach(e => e.classList.toggle('d-none', !user));
+  document.querySelectorAll('.admin').forEach(e => e.classList.toggle('d-none', !isAdmin()));
+  $('who').textContent = user ? `${user.full_name} (${user.role === 'admin' ? 'администратор' : 'ведущий'})` : '';
+  $('authBtn').textContent = user ? 'Выйти' : 'Войти';
+}
+
+$('authBtn').addEventListener('click', async () => {
+  if (!state.user) return modal('loginModal').show();
+  await api('/logout', {method: 'POST'}).catch(() => {});
+  setUser(null, null);
+  showView('rating');
+});
+
+$('loginBtn').addEventListener('click', () => run(async () => {
+  const data = await api('/login', {method: 'POST', body: {login: $('loginInput').value, password: $('passwordInput').value}});
+  setUser(data.token, {id: data.id, full_name: data.full_name, role: data.role});
+  $('passwordInput').value = '';
+  modal('loginModal').hide();
+  showView('sessions');
+}, 'Вход выполнен'));
+$('passwordInput').addEventListener('keydown', e => e.key === 'Enter' && $('loginBtn').click());
+
+document.querySelectorAll('.nav-link').forEach(a => a.addEventListener('click', () => showView(a.dataset.view)));
+
+async function loadRating() {
+  const rows = await run(() => api('/public/rating?' + qs({search: $('ratingSearch').value})));
+  if (!rows) return;
+  renderTable($('ratingTable'), [
+    {key: 'place', title: '#'}, {key: 'nickname', title: 'Никнейм'}, {key: 'rating', title: 'Рейтинг'},
+    {key: 'games_played', title: 'Партий'}, {key: 'wins', title: 'Побед'}, {key: 'win_pct', title: '% побед', fmt: v => v + '%'},
+  ], rows, r => showPublicPlayer(r.nickname));
+}
+$('ratingSearch').addEventListener('input', debounce(loadRating));
+
+async function showPublicPlayer(nickname) {
+  const data = await run(() => api('/public/players/' + encodeURIComponent(nickname)));
+  if (!data) return;
+  const s = data.stats;
+  const ratings = [...data.history].reverse().reduce((acc, h) => [...acc, acc.at(-1) + h.rating_delta], [1000]);
+  $('ratingCard').innerHTML = `<div class="card"><div class="card-body">
+    <h5>${esc(s.nickname)} <span class="badge bg-dark">#${s.place}</span></h5>
+    <p class="mb-2">Рейтинг <b>${s.rating}</b> · партий ${s.games_played} · побед ${s.wins} (${s.win_pct}%)</p>
+    ${sparkline(ratings)}
+    <table class="table table-sm mt-2" id="publicHistory"></table></div></div>`;
+  renderTable($('publicHistory'), [
+    {key: 'starts_at', title: 'Дата', fmt: fmtDate}, {key: 'game', title: 'Игра'},
+    {key: 'place', title: 'Место', fmt: (v, r) => `${v} из ${r.players}`}, {key: 'score', title: 'Очки'},
+    {title: 'Δ рейтинга', html: r => delta(r.rating_delta)},
+  ], data.history);
+}
+
+async function loadSessions(page = state.sessionsPage) {
+  const data = await run(() => api('/sessions?' + qs({status: $('sessionStatus').value, page})));
+  if (!data) return;
+  state.sessionsPage = data.page;
+  renderTable($('sessionsTable'), [
+    {key: 'starts_at', title: 'Начало', fmt: fmtDT}, {key: 'game', title: 'Игра'},
+    {key: 'table_number', title: 'Стол'}, {key: 'players_count', title: 'Игроков'},
+    {title: 'Статус', html: r => badge(r.status)},
+  ], data.items, r => selectSession(r.id), state.sessionId);
+  renderPager($('sessionsPager'), data, loadSessions);
+}
+$('sessionStatus').addEventListener('change', () => loadSessions(1));
+
+async function selectSession(id) {
+  const s = await run(() => api('/sessions/' + id));
+  if (!s) return;
+  state.sessionId = id;
+  renderSession(s);
+  loadSessions();
+}
+
+function renderSession(s) {
+  const planned = s.status === 'planned', active = s.status === 'active';
+  $('sessionDetail').innerHTML = `
+    <div class="d-flex justify-content-between align-items-start">
+      <div><h5 class="mb-1">${esc(s.game)} ${badge(s.status)}</h5>
+        <div class="small text-muted">${fmtDT(s.starts_at)} – ${fmtDT(s.ends_at)} · стол ${s.table_number}, мест: ${s.capacity} ·
+          игроков ${s.min_players}–${s.max_players} · ведущий ${esc(s.host)}</div></div>
+      <div class="btn-group btn-group-sm">
+        ${planned ? '<button class="btn btn-primary" id="startBtn">Начать</button>' : ''}
+        ${active ? '<button class="btn btn-outline-primary" id="saveScoresBtn">Сохранить очки</button><button class="btn btn-success" id="finishBtn">Завершить</button>' : ''}
+        ${planned || active ? '<button class="btn btn-outline-danger" id="cancelBtn">Отменить</button>' : ''}
+      </div>
+    </div>
+    <table class="table table-sm mt-3" id="participants"></table>
+    ${planned ? `<div class="d-flex gap-2"><select class="form-select form-select-sm" id="addPlayerSelect"></select>
+      <button class="btn btn-outline-primary btn-sm text-nowrap" id="addPlayerBtn">Добавить игрока</button></div>` : ''}`;
+
+  renderTable($('participants'), [
+    {key: 'nickname', title: 'Никнейм'}, {key: 'name', title: 'Имя'},
+    {title: 'Очки', html: r => active
+      ? `<input type="number" min="0" class="form-control form-control-sm score-input" data-player="${r.player_id}" value="${r.score ?? ''}">`
+      : esc(r.score)},
+    {key: 'place', title: 'Место'}, {title: 'Δ рейтинга', html: r => delta(r.rating_delta)},
+    ...(planned ? [{title: '', html: r => `<button class="btn btn-link btn-sm text-danger p-0" data-remove="${r.player_id}">убрать</button>`}] : []),
+  ], s.players);
+
+  const go = (path, msg, body) => run(async () => renderSession(await api(`/sessions/${s.id}${path}`, {method: 'POST', body})), msg).then(() => loadSessions());
+  $('startBtn')?.addEventListener('click', () => go('/start', 'Партия началась'));
+  $('cancelBtn')?.addEventListener('click', () => confirm('Отменить партию?') && go('/cancel', 'Партия отменена'));
+
+  if (active) {
+    const inputs = [...document.querySelectorAll('.score-input')];
+    const scores = () => inputs.map(i => ({player_id: +i.dataset.player, score: +i.value}));
+    const refresh = () => $('finishBtn').disabled = inputs.some(i => i.value === '');
+    inputs.forEach(i => i.addEventListener('input', refresh));
+    refresh();
+    $('saveScoresBtn').addEventListener('click', () => run(async () =>
+      renderSession(await api(`/sessions/${s.id}/scores`, {method: 'PUT', body: {scores: scores()}})), 'Очки сохранены'));
+    $('finishBtn').addEventListener('click', () => run(async () => {
+      await api(`/sessions/${s.id}/scores`, {method: 'PUT', body: {scores: scores()}});
+      renderSession(await api(`/sessions/${s.id}/finish`, {method: 'POST'}));
+      loadSessions();
+    }, 'Партия завершена, рейтинг пересчитан'));
+  }
+
+  if (planned) {
+    document.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation();
+      run(async () => renderSession(await api(`/sessions/${s.id}/players/${b.dataset.remove}`, {method: 'DELETE'})), 'Игрок убран')
+        .then(() => loadSessions());
+    }));
+    run(async () => {
+      const {items} = await api('/players?size=100');
+      const inGame = new Set(s.players.map(p => p.player_id));
+      $('addPlayerSelect').innerHTML = items.filter(p => !inGame.has(p.id))
+        .map(p => `<option value="${p.id}">${esc(p.nickname)} — ${esc(p.name)}</option>`).join('');
+    });
+    $('addPlayerBtn').addEventListener('click', () => run(async () =>
+      renderSession(await api(`/sessions/${s.id}/players`, {method: 'POST', body: {player_id: +$('addPlayerSelect').value}})),
+      'Игрок добавлен').then(() => loadSessions()));
+  }
+}
+
+const toLocalInput = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+$('newSessionBtn').addEventListener('click', () => run(async () => {
+  const [games, tables, players] = await Promise.all([api('/games?size=100'), api('/tables'), api('/players?size=100')]);
+  state.newSessionGames = games.items;
+  $('sGame').innerHTML = games.items.map(g => `<option value="${g.id}">${esc(g.title)} (${g.min_players}–${g.max_players} игроков, ${g.duration_min} мин)</option>`).join('');
+  $('sTable').innerHTML = tables.map(t => `<option value="${t.id}">Стол ${t.number} — мест: ${t.capacity}</option>`).join('');
+  $('sPlayers').innerHTML = players.items.map(p => `<option value="${p.id}">${esc(p.nickname)} — ${esc(p.name)}</option>`).join('');
+  const start = new Date(); start.setMinutes(0, 0, 0); start.setHours(start.getHours() + 1);
+  $('sStart').value = toLocalInput(start);
+  updateSessionEnd();
+  modal('sessionModal').show();
+}));
+
+function updateSessionEnd() {
+  const game = state.newSessionGames?.find(g => g.id === +$('sGame').value);
+  if (!game || !$('sStart').value) return;
+  $('sEnd').value = toLocalInput(new Date(new Date($('sStart').value).getTime() + game.duration_min * 60000));
+  $('sHint').textContent = `Для этой игры нужно ${game.min_players}–${game.max_players} игроков`;
+}
+$('sGame').addEventListener('change', updateSessionEnd);
+$('sStart').addEventListener('change', updateSessionEnd);
+
+$('sSave').addEventListener('click', () => run(async () => {
+  const s = await api('/sessions', {method: 'POST', body: {
+    game_id: +$('sGame').value, table_id: +$('sTable').value,
+    starts_at: $('sStart').value, ends_at: $('sEnd').value,
+    player_ids: [...$('sPlayers').selectedOptions].map(o => +o.value),
+  }});
+  modal('sessionModal').hide();
+  state.sessionId = s.id;
+  renderSession(s);
+  loadSessions(1);
+}, 'Партия создана'));
+
+async function loadGenresInto(select, withAll) {
+  const genres = await api('/genres');
+  select.innerHTML = (withAll ? '<option value="">Все жанры</option>' : '') +
+    genres.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+}
+
+async function loadGames(page = state.gamesPage) {
+  if (!$('gameGenre').options.length) await run(() => loadGenresInto($('gameGenre'), true));
+  const data = await run(() => api('/games?' + qs({search: $('gameSearch').value, genre_id: $('gameGenre').value,
+    players: $('gamePlayers').value, page})));
+  if (!data) return;
+  state.gamesPage = data.page;
+  renderTable($('gamesTable'), [
+    {key: 'title', title: 'Название'}, {key: 'genre', title: 'Жанр'},
+    {title: 'Игроков', html: r => `${r.min_players}–${r.max_players}`}, {key: 'duration_min', title: 'Мин'},
+    {key: 'complexity', title: 'Сложность', fmt: v => '★'.repeat(v)}, {key: 'copies', title: 'Копий'},
+  ], data.items, isAdmin() ? openGame : null);
+  renderPager($('gamesPager'), data, loadGames);
+}
+['gameSearch', 'gamePlayers'].forEach(id => $(id).addEventListener('input', debounce(() => loadGames(1))));
+$('gameGenre').addEventListener('change', () => loadGames(1));
+
+async function openGame(game) {
+  await run(() => loadGenresInto($('gGenre'), false));
+  state.gameId = game?.id ?? null;
+  $('gameModalTitle').textContent = game ? 'Редактирование игры' : 'Новая игра';
+  $('gTitle').value = game?.title ?? '';
+  $('gGenre').value = game?.genre_id ?? $('gGenre').value;
+  $('gMin').value = game?.min_players ?? 2;
+  $('gMax').value = game?.max_players ?? 4;
+  $('gDuration').value = game?.duration_min ?? 60;
+  $('gComplexity').value = game?.complexity ?? 2;
+  $('gCopies').value = game?.copies ?? 1;
+  $('gDelete').classList.toggle('d-none', !game);
+  modal('gameModal').show();
+}
+$('newGameBtn').addEventListener('click', () => openGame(null));
+
+$('gSave').addEventListener('click', () => run(async () => {
+  const body = {title: $('gTitle').value.trim(), genre_id: +$('gGenre').value, min_players: +$('gMin').value,
+    max_players: +$('gMax').value, duration_min: +$('gDuration').value, complexity: +$('gComplexity').value,
+    copies: +$('gCopies').value};
+  if (!body.title) throw new Error('Введите название игры');
+  await api(state.gameId ? '/games/' + state.gameId : '/games', {method: state.gameId ? 'PUT' : 'POST', body});
+  modal('gameModal').hide();
+  loadGames();
+}, 'Игра сохранена'));
+
+$('gDelete').addEventListener('click', () => confirm('Удалить игру?') && run(async () => {
+  await api('/games/' + state.gameId, {method: 'DELETE'});
+  modal('gameModal').hide();
+  loadGames();
+}, 'Игра удалена'));
+
+async function loadPlayers(page = state.playersPage) {
+  const data = await run(() => api('/players?' + qs({search: $('playerSearch').value, active_only: !$('playerAll').checked, page})));
+  if (!data) return;
+  state.playersPage = data.page;
+  renderTable($('playersTable'), [
+    {key: 'nickname', title: 'Никнейм'}, {key: 'name', title: 'Имя'}, {key: 'rating', title: 'Рейтинг'},
+    {key: 'registered_at', title: 'Регистрация', fmt: fmtDate},
+    {title: 'Статус', html: r => r.is_active ? '<span class="badge bg-success">активен</span>' : '<span class="badge bg-secondary">неактивен</span>'},
+  ], data.items, openPlayer);
+  renderPager($('playersPager'), data, loadPlayers);
+}
+$('playerSearch').addEventListener('input', debounce(() => loadPlayers(1)));
+$('playerAll').addEventListener('change', () => loadPlayers(1));
+
+async function openPlayer(player) {
+  state.playerId = player?.id ?? null;
+  $('playerModalTitle').textContent = player ? 'Карточка игрока' : 'Новый игрок';
+  $('pName').value = player?.name ?? '';
+  $('pNick').value = player?.nickname ?? '';
+  $('pDeactivate').classList.toggle('d-none', !player || !player.is_active);
+  $('playerCard').innerHTML = '';
+  modal('playerModal').show();
+  if (!player) return;
+  const card = await run(() => api('/reports/player-card/' + player.id));
+  if (!card) return;
+  $('playerCard').innerHTML = `
+    <h6>Динамика рейтинга</h6>${sparkline([1000, ...card.history.map(h => h.rating_after)]) || '<p class="small text-muted">Недостаточно партий</p>'}
+    <h6 class="mt-3">Любимые игры</h6>
+    <p class="small">${card.favorite_games.map(f => `${esc(f.game)} — партий: ${f.sessions}, побед: ${f.wins}`).join('<br>') || '—'}</p>
+    <h6>История партий</h6><table class="table table-sm" id="playerHistory"></table>`;
+  renderTable($('playerHistory'), [
+    {key: 'starts_at', title: 'Дата', fmt: fmtDate}, {key: 'game', title: 'Игра'}, {key: 'score', title: 'Очки'},
+    {key: 'place', title: 'Место'}, {title: 'Δ', html: r => delta(r.rating_delta)}, {key: 'rating_after', title: 'Рейтинг после'},
+  ], [...card.history].reverse());
+}
+$('newPlayerBtn').addEventListener('click', () => openPlayer(null));
+
+$('pSave').addEventListener('click', () => run(async () => {
+  const body = {name: $('pName').value.trim(), nickname: $('pNick').value.trim()};
+  if (!body.name) throw new Error('Введите имя игрока');
+  await api(state.playerId ? '/players/' + state.playerId : '/players', {method: state.playerId ? 'PUT' : 'POST', body});
+  modal('playerModal').hide();
+  loadPlayers();
+}, 'Игрок сохранён'));
+
+$('pDeactivate').addEventListener('click', () => confirm('Деактивировать игрока? История партий сохранится.') && run(async () => {
+  await api('/players/' + state.playerId, {method: 'DELETE'});
+  modal('playerModal').hide();
+  loadPlayers();
+}, 'Игрок деактивирован'));
+
+async function loadDicts() {
+  const [tables, genres] = await run(() => Promise.all([api('/tables'), api('/genres')])) || [[], []];
+  const del = (path, msg) => b => b.addEventListener('click', () => confirm('Удалить?') &&
+    run(() => api(path + b.dataset.id, {method: 'DELETE'}), msg).then(loadDicts));
+  renderTable($('tablesTable'), [{key: 'number', title: 'Номер'}, {key: 'capacity', title: 'Мест'},
+    {title: '', html: r => `<button class="btn btn-link btn-sm text-danger p-0" data-table="${r.id}" data-id="${r.id}">удалить</button>`}], tables);
+  renderTable($('genresTable'), [{key: 'name', title: 'Название'},
+    {title: '', html: r => `<button class="btn btn-link btn-sm text-danger p-0" data-genre="${r.id}" data-id="${r.id}">удалить</button>`}], genres);
+  document.querySelectorAll('[data-table]').forEach(del('/tables/', 'Стол удалён'));
+  document.querySelectorAll('[data-genre]').forEach(del('/genres/', 'Жанр удалён'));
+}
+$('addTableBtn').addEventListener('click', () => run(async () => {
+  await api('/tables', {method: 'POST', body: {number: +$('tableNumber').value, capacity: +$('tableCapacity').value}});
+  $('tableNumber').value = $('tableCapacity').value = '';
+  loadDicts();
+}, 'Стол добавлен'));
+$('addGenreBtn').addEventListener('click', () => run(async () => {
+  await api('/genres', {method: 'POST', body: {name: $('genreName').value.trim()}});
+  $('genreName').value = '';
+  loadDicts();
+}, 'Жанр добавлен'));
+
+const REPORTS = {
+  'top-players': [{key: 'place', title: '#'}, {key: 'nickname', title: 'Никнейм'}, {key: 'rating', title: 'Рейтинг'},
+    {key: 'games_played', title: 'Партий'}, {key: 'wins', title: 'Побед'}, {key: 'win_pct', title: '% побед', fmt: v => v + '%'}],
+  'game-popularity': [{key: 'game', title: 'Игра'}, {key: 'genre', title: 'Жанр'}, {key: 'sessions', title: 'Партий'},
+    {key: 'unique_players', title: 'Уникальных игроков'}],
+  'table-load': [{key: 'table_number', title: 'Стол'}, {key: 'sessions', title: 'Партий'},
+    ...['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((k, i) => ({key: k, title: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i]})),
+    {key: 'total_hours', title: 'Всего, ч'}],
+};
+function syncReportParams() {
+  const top = $('reportType').value === 'top-players';
+  document.querySelectorAll('.period').forEach(e => e.classList.toggle('d-none', top));
+  document.querySelector('.limit').classList.toggle('d-none', !top);
+}
+async function loadReport() {
+  syncReportParams();
+  const type = $('reportType').value;
+  const params = type === 'top-players' ? {limit: $('reportLimit').value} : {date_from: $('reportFrom').value, date_to: $('reportTo').value};
+  const rows = await run(() => api(`/reports/${type}?` + qs(params)));
+  if (rows) renderTable($('reportTable'), REPORTS[type], rows);
+}
+$('reportType').addEventListener('change', loadReport);
+$('reportBtn').addEventListener('click', loadReport);
+
+setUser(state.token, state.user);
+showView(state.user ? 'sessions' : 'rating');
+</script>
+</body>
+</html>
