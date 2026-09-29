@@ -5,202 +5,507 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Клуб настольных игр</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <style>
-  body { background: #f5f6f8; }
-  .view { display: none; }
-  .view.active { display: block; }
-  .clickable tbody tr { cursor: pointer; }
-  .clickable tbody tr.selected td { background: #dbe8ff; }
-  .score-input { width: 90px; }
-  .nav-link { cursor: pointer; }
+:root { --brand:#4f46e5; --brand-2:#7c3aed; --bg:#f4f6fb; --r:14px; }
+* { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { background: var(--bg); min-height: 100vh; }
+
+.navbar-club { background: linear-gradient(90deg, var(--brand), var(--brand-2));
+  box-shadow: 0 2px 14px rgba(79,70,229,.28); }
+.navbar-club .navbar-brand { font-weight: 700; letter-spacing: .3px; }
+.navbar-club .nav-link { color: rgba(255,255,255,.78); font-weight: 500;
+  border-radius: 8px; padding: .4rem .8rem !important; }
+.navbar-club .nav-link:hover { color: #fff; background: rgba(255,255,255,.12); }
+.navbar-club .nav-link.active { color: #fff; background: rgba(255,255,255,.2); }
+.navbar-club .navbar-text { color: rgba(255,255,255,.85); }
+
+.card { border: none; border-radius: var(--r);
+  box-shadow: 0 1px 3px rgba(15,23,42,.06), 0 4px 16px rgba(15,23,42,.04); }
+.card-header { background:#fff; border-bottom:1px solid #eef1f6;
+  border-radius: var(--r) var(--r) 0 0 !important; font-weight:600; padding:.9rem 1.1rem; }
+.card-body { padding: 1.1rem; }
+
+.table { margin-bottom: 0; }
+.table thead th { font-size:.76rem; text-transform:uppercase; letter-spacing:.05em;
+  color:#64748b; font-weight:600; border-bottom:1px solid #eef1f6; padding:.6rem .75rem; }
+.table tbody td { padding:.6rem .75rem; vertical-align:middle; }
+.table-hover tbody tr:hover { background:#f8fafc; }
+.clickable tbody tr { cursor:pointer; }
+.clickable tbody tr.selected td { background:#eef2ff !important; }
+.table-sm thead th, .table-sm tbody td { padding:.45rem .6rem; }
+
+.btn-primary { background: var(--brand); border-color: var(--brand); }
+.btn-primary:hover, .btn-primary:focus { background:#4338ca; border-color:#4338ca; }
+.btn-outline-primary { color: var(--brand); border-color: var(--brand); }
+.btn-outline-primary:hover { background: var(--brand); border-color: var(--brand); color:#fff; }
+.btn { border-radius: 9px; font-weight: 500; }
+.badge { font-weight: 500; padding: .35em .7em; border-radius: 6px; }
+
+.view { display: none; animation: fade .25s ease; }
+.view.active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.stat { background:#fff; border-radius:12px; padding:.85rem 1rem;
+  border-left:4px solid var(--brand); box-shadow: 0 1px 3px rgba(15,23,42,.05); }
+.stat .label { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em;
+  color:#64748b; font-weight:600; }
+.stat .value { font-size:1.4rem; font-weight:700; color:#0f172a; line-height:1.2; }
+
+.empty { text-align:center; padding:2rem 1rem; color:#94a3b8; }
+.empty i { font-size:2.2rem; display:block; margin-bottom:.5rem; opacity:.6; }
+
+.loading-overlay { position:fixed; inset:0; background:rgba(244,246,251,.6);
+  display:none; align-items:center; justify-content:center; z-index:1080; backdrop-filter:blur(2px); }
+.loading-overlay.show { display:flex; }
+
+.score-input { width:90px; }
+.score-input.done { border-color:#10b981; box-shadow: 0 0 0 .15rem rgba(16,185,129,.15); }
+
+.rank-badge { display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:50%; font-weight:700; font-size:.85rem; }
+.rank-1 { background: linear-gradient(135deg,#fbbf24,#f59e0b); color:#fff; }
+.rank-2 { background: linear-gradient(135deg,#cbd5e1,#94a3b8); color:#fff; }
+.rank-3 { background: linear-gradient(135deg,#d97706,#b45309); color:#fff; }
+.rank-n { background:#e2e8f0; color:#475569; }
+
+.dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
+.dot-planned { background:#64748b; }
+.dot-active { background:#3b82f6; animation: pulse 1.5s infinite; }
+.dot-finished { background:#10b981; }
+.dot-cancelled { background:#ef4444; }
+@keyframes pulse { 50% { opacity:.4; } }
+
+.spark-wrap { background:#f8fafc; border-radius:10px; padding:.6rem; }
+
+.score-pill { display:inline-block; padding:.15rem .55rem; border-radius:6px;
+  background:#eef2ff; color:var(--brand); font-weight:600; font-size:.85rem; }
+.place-1 { background:#fef3c7; color:#b45309; }
+.place-2 { background:#f1f5f9; color:#475569; }
+.place-3 { background:#fee2e2; color:#b91c1c; }
+
+.modal-content { border:none; border-radius:14px; box-shadow:0 20px 60px rgba(15,23,42,.18); }
+.modal-header { border-bottom:1px solid #eef1f6; padding:.9rem 1.1rem; }
+.modal-footer { border-top:1px solid #eef1f6; padding:.8rem 1.1rem; }
+.modal-title { font-weight:600; }
+
+.sortable th[data-sort] { cursor:pointer; user-select:none; white-space:nowrap; }
+.sortable th[data-sort]:hover { color: var(--brand); }
+.sortable th[data-sort]::after { content:"⇅"; margin-left:.3rem; opacity:.35; font-size:.85em; }
+.sortable th[data-sort].asc::after  { content:"↑"; opacity:1; color:var(--brand); }
+.sortable th[data-sort].desc::after { content:"↓"; opacity:1; color:var(--brand); }
+
+.toast { border-radius: 10px; }
+.brand-icon { font-size: 1.35rem; margin-right: .3rem; }
+
+/* Календарь */
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.cal-cell { background:#f8fafc; border-radius:8px; padding:6px; min-height:130px; }
+.cal-cell.today { background:#eef2ff; box-shadow: 0 0 0 2px #c7d2fe inset; }
+.cal-cell.dim { opacity:.45; }
+.cal-day { font-size:.72rem; font-weight:600; color:#64748b; margin-bottom:5px; text-transform:uppercase; }
+.cal-item { border-radius:6px; padding:4px 6px; margin-bottom:3px; cursor:pointer;
+  border-left:3px solid #94a3b8; background:#fff; font-size:.76rem; transition: all .15s; line-height:1.25; }
+.cal-item:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(15,23,42,.1); }
+.cal-item.status-planned  { border-left-color:#64748b; }
+.cal-item.status-active   { border-left-color:#3b82f6; background:#eff6ff; }
+.cal-item.status-finished { border-left-color:#10b981; }
+.cal-item.status-cancelled{ border-left-color:#ef4444; opacity:.55; text-decoration: line-through; }
+.cal-item .t { font-weight:600; }
+.cal-item .g { color:#0f172a; }
+.cal-item .m { color:#64748b; font-size:.7rem; }
+
+.rating-point { cursor: pointer; }
+.rating-point:hover { r: 6; stroke-width: 3; }
+
+.ban-info { background:#fef2f2; border-left:3px solid #ef4444; padding:.5rem .75rem;
+  border-radius:6px; font-size:.85rem; color:#991b1b; }
+.att-cell input[type="checkbox"] { width:1.15rem; height:1.15rem; }
 </style>
 </head>
 <body>
 
-<nav class="navbar navbar-expand navbar-dark bg-dark px-3">
-  <span class="navbar-brand">🎲 Клуб настольных игр</span>
-  <div class="navbar-nav me-auto">
-    <a class="nav-link" data-view="rating">Рейтинг</a>
-    <a class="nav-link staff" data-view="sessions">Партии</a>
-    <a class="nav-link staff" data-view="games">Игры</a>
-    <a class="nav-link staff" data-view="players">Игроки</a>
-    <a class="nav-link admin" data-view="dicts">Столы и жанры</a>
-    <a class="nav-link staff" data-view="reports">Отчёты</a>
+<nav class="navbar navbar-expand-lg navbar-dark navbar-club px-3">
+  <span class="navbar-brand d-flex align-items-center">
+    <i class="bi bi-dice-5 brand-icon"></i> Клуб настольных игр
+  </span>
+  <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="collapse navbar-collapse" id="navMain">
+    <div class="navbar-nav me-auto">
+      <a class="nav-link" data-view="rating"><i class="bi bi-trophy"></i> Рейтинг</a>
+      <a class="nav-link staff" data-view="calendar"><i class="bi bi-calendar-week"></i> Календарь</a>
+      <a class="nav-link staff" data-view="sessions"><i class="bi bi-calendar-event"></i> Партии</a>
+      <a class="nav-link staff" data-view="games"><i class="bi bi-controller"></i> Игры</a>
+      <a class="nav-link staff" data-view="players"><i class="bi bi-people"></i> Игроки</a>
+      <a class="nav-link admin" data-view="dicts"><i class="bi bi-table"></i> Столы и жанры</a>
+      <a class="nav-link staff" data-view="reports"><i class="bi bi-bar-chart"></i> Отчёты</a>
+    </div>
+    <span class="navbar-text me-3 small" id="who"></span>
+    <button class="btn btn-outline-light btn-sm" id="authBtn">
+      <i class="bi bi-box-arrow-in-right"></i> Войти
+    </button>
   </div>
-  <span class="navbar-text me-3" id="who"></span>
-  <button class="btn btn-outline-light btn-sm" id="authBtn">Войти</button>
 </nav>
 
-<main class="container-fluid p-3">
+<main class="container-fluid p-3 p-lg-4">
 
+  <!-- РЕЙТИНГ -->
   <section class="view" id="view-rating">
     <div class="row g-3">
       <div class="col-lg-6">
-        <div class="card"><div class="card-body">
-          <h5>Рейтинг клуба</h5>
-          <input class="form-control mb-2" id="ratingSearch" placeholder="Поиск по никнейму">
-          <table class="table table-sm table-hover clickable" id="ratingTable"></table>
-        </div></div>
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-trophy-fill text-warning me-1"></i> Рейтинг клуба</span>
+            <span class="small text-muted" id="ratingCount"></span>
+          </div>
+          <div class="card-body">
+            <div class="input-group input-group-sm mb-3">
+              <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+              <input class="form-control" id="ratingSearch" placeholder="Поиск по никнейму">
+            </div>
+            <div class="table-responsive"><table class="table table-sm table-hover clickable sortable" id="ratingTable"></table></div>
+          </div>
+        </div>
       </div>
       <div class="col-lg-6"><div id="ratingCard"></div></div>
     </div>
   </section>
 
+  <!-- КАЛЕНДАРЬ -->
+  <section class="view" id="view-calendar">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-calendar-week me-1"></i> Календарь партий</span>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <button class="btn btn-outline-secondary btn-sm" id="calPrev" title="Предыдущая неделя"><i class="bi bi-chevron-left"></i></button>
+          <button class="btn btn-outline-secondary btn-sm" id="calToday">Эта неделя</button>
+          <button class="btn btn-outline-secondary btn-sm" id="calNext" title="Следующая неделя"><i class="bi bi-chevron-right"></i></button>
+          <span class="small text-muted ms-2" id="calRange"></span>
+          <input type="date" class="form-control form-control-sm" id="calFrom" style="width:auto">
+          <input type="date" class="form-control form-control-sm" id="calTo" style="width:auto">
+          <button class="btn btn-primary btn-sm" id="calApply">Показать</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="calendarGrid"><div class="empty"><i class="bi bi-calendar-x"></i>Загрузка…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ПАРТИИ -->
   <section class="view" id="view-sessions">
     <div class="row g-3">
       <div class="col-lg-5">
-        <div class="card"><div class="card-body">
-          <div class="d-flex gap-2 mb-2">
-            <select class="form-select form-select-sm" id="sessionStatus">
-              <option value="">Все статусы</option>
-              <option value="planned">Запланирована</option>
-              <option value="active">Идёт</option>
-              <option value="finished">Завершена</option>
-              <option value="cancelled">Отменена</option>
-            </select>
-            <button class="btn btn-primary btn-sm text-nowrap" id="newSessionBtn">+ Новая партия</button>
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-calendar-event me-1"></i> Партии</span>
+            <button class="btn btn-primary btn-sm" id="newSessionBtn"><i class="bi bi-plus-lg"></i> Новая</button>
           </div>
-          <table class="table table-sm table-hover clickable" id="sessionsTable"></table>
-          <div id="sessionsPager"></div>
-        </div></div>
+          <div class="card-body">
+            <div class="row g-2 mb-2">
+              <div class="col-6">
+                <select class="form-select form-select-sm" id="sessionStatus">
+                  <option value="">Все статусы</option>
+                  <option value="planned">Запланирована</option>
+                  <option value="active">Идёт</option>
+                  <option value="finished">Завершена</option>
+                  <option value="cancelled">Отменена</option>
+                </select>
+              </div>
+              <div class="col-6"><input type="date" class="form-control form-control-sm" id="sessionDate" title="Дата"></div>
+            </div>
+            <div class="table-responsive"><table class="table table-sm table-hover clickable" id="sessionsTable"></table></div>
+            <div id="sessionsPager"></div>
+          </div>
+        </div>
       </div>
       <div class="col-lg-7">
-        <div class="card"><div class="card-body" id="sessionDetail">
-          <p class="text-muted mb-0">Выберите партию слева</p>
+        <div class="card h-100"><div class="card-body" id="sessionDetail">
+          <div class="empty"><i class="bi bi-hand-index"></i>Выберите партию слева</div>
         </div></div>
       </div>
     </div>
   </section>
 
+  <!-- ИГРЫ -->
   <section class="view" id="view-games">
-    <div class="card"><div class="card-body">
-      <div class="row g-2 mb-2">
-        <div class="col-md-4"><input class="form-control form-control-sm" id="gameSearch" placeholder="Название"></div>
-        <div class="col-md-3"><select class="form-select form-select-sm" id="gameGenre"></select></div>
-        <div class="col-md-2"><input type="number" min="1" class="form-control form-control-sm" id="gamePlayers" placeholder="Игроков"></div>
-        <div class="col-md-3 text-end"><button class="btn btn-primary btn-sm admin" id="newGameBtn">+ Добавить игру</button></div>
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-controller me-1"></i> Каталог игр</span>
+        <button class="btn btn-primary btn-sm admin" id="newGameBtn"><i class="bi bi-plus-lg"></i> Добавить игру</button>
       </div>
-      <table class="table table-sm table-hover clickable" id="gamesTable"></table>
-      <div id="gamesPager"></div>
-    </div></div>
-  </section>
-
-  <section class="view" id="view-players">
-    <div class="card"><div class="card-body">
-      <div class="d-flex gap-2 mb-2">
-        <input class="form-control form-control-sm" id="playerSearch" placeholder="Имя или никнейм">
-        <div class="form-check text-nowrap align-self-center">
-          <input class="form-check-input" type="checkbox" id="playerAll">
-          <label class="form-check-label" for="playerAll">Показывать неактивных</label>
+      <div class="card-body">
+        <div class="row g-2 mb-3">
+          <div class="col-md-5"><div class="input-group input-group-sm">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input class="form-control" id="gameSearch" placeholder="Название игры">
+          </div></div>
+          <div class="col-md-4"><select class="form-select form-select-sm" id="gameGenre"></select></div>
+          <div class="col-md-3"><input type="number" min="1" class="form-control form-control-sm" id="gamePlayers" placeholder="Число игроков"></div>
         </div>
-        <button class="btn btn-primary btn-sm text-nowrap" id="newPlayerBtn">+ Новый игрок</button>
+        <div class="table-responsive"><table class="table table-sm table-hover clickable sortable" id="gamesTable"></table></div>
+        <div id="gamesPager"></div>
       </div>
-      <table class="table table-sm table-hover clickable" id="playersTable"></table>
-      <div id="playersPager"></div>
-    </div></div>
-  </section>
-
-  <section class="view" id="view-dicts">
-    <div class="row g-3">
-      <div class="col-md-6"><div class="card"><div class="card-body">
-        <h5>Столы</h5>
-        <div class="d-flex gap-2 mb-2">
-          <input type="number" min="1" class="form-control form-control-sm" id="tableNumber" placeholder="Номер">
-          <input type="number" min="2" class="form-control form-control-sm" id="tableCapacity" placeholder="Мест">
-          <button class="btn btn-primary btn-sm" id="addTableBtn">Добавить</button>
-        </div>
-        <table class="table table-sm" id="tablesTable"></table>
-      </div></div></div>
-      <div class="col-md-6"><div class="card"><div class="card-body">
-        <h5>Жанры</h5>
-        <div class="d-flex gap-2 mb-2">
-          <input class="form-control form-control-sm" id="genreName" placeholder="Название">
-          <button class="btn btn-primary btn-sm" id="addGenreBtn">Добавить</button>
-        </div>
-        <table class="table table-sm" id="genresTable"></table>
-      </div></div></div>
     </div>
   </section>
 
-  <section class="view" id="view-reports">
-    <div class="card"><div class="card-body">
-      <div class="row g-2 mb-3 align-items-end">
-        <div class="col-md-4"><label class="form-label small">Отчёт</label>
-          <select class="form-select form-select-sm" id="reportType">
-            <option value="top-players">RP-01. Топ игроков</option>
-            <option value="game-popularity">RP-02. Популярность игр</option>
-            <option value="table-load">RP-03. Загрузка столов (часы)</option>
-          </select></div>
-        <div class="col-md-2 period"><label class="form-label small">С</label><input type="date" class="form-control form-control-sm" id="reportFrom"></div>
-        <div class="col-md-2 period"><label class="form-label small">По</label><input type="date" class="form-control form-control-sm" id="reportTo"></div>
-        <div class="col-md-2 limit"><label class="form-label small">Строк</label><input type="number" min="1" max="100" value="10" class="form-control form-control-sm" id="reportLimit"></div>
-        <div class="col-md-2"><button class="btn btn-primary btn-sm w-100" id="reportBtn">Сформировать</button></div>
+  <!-- ИГРОКИ -->
+  <section class="view" id="view-players">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-people me-1"></i> Игроки</span>
+        <button class="btn btn-primary btn-sm" id="newPlayerBtn"><i class="bi bi-person-plus"></i> Новый игрок</button>
       </div>
-      <table class="table table-sm table-striped" id="reportTable"></table>
-      <p class="small text-muted">Карточка игрока (RP-04) открывается из раздела «Игроки».</p>
-    </div></div>
+      <div class="card-body">
+        <div class="row g-2 mb-3 align-items-center">
+          <div class="col-md-6"><div class="input-group input-group-sm">
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input class="form-control" id="playerSearch" placeholder="Имя или никнейм">
+          </div></div>
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="playerAll">
+              <label class="form-check-label small" for="playerAll">Показывать неактивных и забаненных</label>
+            </div>
+          </div>
+        </div>
+        <div class="table-responsive"><table class="table table-sm table-hover clickable" id="playersTable"></table></div>
+        <div id="playersPager"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- СПРАВОЧНИКИ -->
+  <section class="view" id="view-dicts">
+    <div class="row g-3">
+      <div class="col-md-6"><div class="card h-100">
+        <div class="card-header"><i class="bi bi-table me-1"></i> Столы</div>
+        <div class="card-body">
+          <div class="row g-2 mb-3">
+            <div class="col-4"><input type="number" min="1" class="form-control form-control-sm" id="tableNumber" placeholder="№ (авто)"></div>
+            <div class="col-3"><input type="number" min="2" class="form-control form-control-sm" id="tableCapacity" placeholder="Мест"></div>
+            <div class="col-5"><input class="form-control form-control-sm" id="tableDesc" placeholder="Описание" maxlength="255"></div>
+          </div>
+          <button class="btn btn-primary btn-sm w-100 mb-3" id="addTableBtn"><i class="bi bi-plus-lg"></i> Добавить стол</button>
+          <table class="table table-sm table-hover" id="tablesTable"></table>
+        </div>
+      </div></div>
+      <div class="col-md-6"><div class="card h-100">
+        <div class="card-header"><i class="bi bi-tags me-1"></i> Жанры</div>
+        <div class="card-body">
+          <div class="input-group input-group-sm mb-3">
+            <input class="form-control" id="genreName" placeholder="Название жанра">
+            <button class="btn btn-primary" id="addGenreBtn">Добавить</button>
+          </div>
+          <table class="table table-sm table-hover" id="genresTable"></table>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ОТЧЁТЫ -->
+  <section class="view" id="view-reports">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bar-chart me-1"></i> Отчёты</span>
+        <button class="btn btn-outline-primary btn-sm" id="reportExportBtn">
+          <i class="bi bi-download"></i> Экспорт CSV
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="row g-2 mb-3 align-items-end">
+          <div class="col-md-4"><label class="form-label small mb-1">Отчёт</label>
+            <select class="form-select form-select-sm" id="reportType">
+              <option value="top-players">RP-01. Топ игроков</option>
+              <option value="game-popularity">RP-02. Популярность игр</option>
+              <option value="table-load">RP-03. Загрузка столов (часы)</option>
+            </select></div>
+          <div class="col-md-2 period"><label class="form-label small mb-1">С</label><input type="date" class="form-control form-control-sm" id="reportFrom"></div>
+          <div class="col-md-2 period"><label class="form-label small mb-1">По</label><input type="date" class="form-control form-control-sm" id="reportTo"></div>
+          <div class="col-md-2 limit"><label class="form-label small mb-1">Строк</label><input type="number" min="1" max="100" value="10" class="form-control form-control-sm" id="reportLimit"></div>
+          <div class="col-md-2"><button class="btn btn-primary btn-sm w-100" id="reportBtn"><i class="bi bi-gear"></i> Сформировать</button></div>
+        </div>
+        <div class="table-responsive"><table class="table table-sm table-striped" id="reportTable"></table></div>
+        <p class="small text-muted mt-3 mb-0">Карточка игрока (RP-04) открывается из раздела «Игроки».</p>
+      </div>
+    </div>
   </section>
 </main>
 
-<div class="modal fade" id="loginModal" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title">Вход для сотрудников</h5></div>
-  <div class="modal-body">
-    <input class="form-control mb-2" id="loginInput" placeholder="Логин" autocomplete="username">
-    <input class="form-control" type="password" id="passwordInput" placeholder="Пароль" autocomplete="current-password">
-  </div>
-  <div class="modal-footer"><button class="btn btn-primary w-100" id="loginBtn">Войти</button></div>
-</div></div></div>
-
-<div class="modal fade" id="gameModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title" id="gameModalTitle">Игра</h5></div>
-  <div class="modal-body row g-2">
-    <div class="col-12"><label class="form-label small">Название *</label><input class="form-control" id="gTitle" maxlength="100"></div>
-    <div class="col-12"><label class="form-label small">Жанр *</label><select class="form-select" id="gGenre"></select></div>
-    <div class="col-6"><label class="form-label small">Мин. игроков *</label><input type="number" min="1" class="form-control" id="gMin"></div>
-    <div class="col-6"><label class="form-label small">Макс. игроков *</label><input type="number" min="1" class="form-control" id="gMax"></div>
-    <div class="col-4"><label class="form-label small">Длительность, мин *</label><input type="number" min="5" class="form-control" id="gDuration"></div>
-    <div class="col-4"><label class="form-label small">Сложность 1–5 *</label><input type="number" min="1" max="5" class="form-control" id="gComplexity"></div>
-    <div class="col-4"><label class="form-label small">Копий *</label><input type="number" min="1" class="form-control" id="gCopies"></div>
-  </div>
-  <div class="modal-footer">
-    <button class="btn btn-outline-danger me-auto" id="gDelete">Удалить</button>
-    <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-    <button class="btn btn-primary" id="gSave">Сохранить</button>
-  </div>
-</div></div></div>
-
-<div class="modal fade" id="playerModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title" id="playerModalTitle">Игрок</h5></div>
-  <div class="modal-body">
-    <div class="row g-2 mb-3">
-      <div class="col-md-6"><label class="form-label small">Имя *</label><input class="form-control" id="pName" maxlength="100"></div>
-      <div class="col-md-6"><label class="form-label small">Никнейм * (3–30 символов: буквы, цифры, _)</label><input class="form-control" id="pNick" maxlength="30"></div>
+<!-- ====== ВХОД ====== -->
+<div class="modal fade" id="loginModal" tabindex="-1"><div class="modal-dialog modal-sm modal-dialog-centered">
+  <div class="modal-content">
+    <div class="modal-header"><h6 class="modal-title"><i class="bi bi-shield-lock me-1"></i> Вход для сотрудников</h6></div>
+    <div class="modal-body">
+      <div class="input-group input-group-sm mb-2">
+        <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+        <input class="form-control" id="loginInput" placeholder="Логин" autocomplete="username">
+      </div>
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-white"><i class="bi bi-key"></i></span>
+        <input class="form-control" type="password" id="passwordInput" placeholder="Пароль" autocomplete="current-password">
+      </div>
     </div>
-    <div id="playerCard"></div>
+    <div class="modal-footer">
+      <button class="btn btn-primary w-100" id="loginBtn"><i class="bi bi-box-arrow-in-right"></i> Войти</button>
+    </div>
   </div>
-  <div class="modal-footer">
-    <button class="btn btn-outline-danger me-auto" id="pDeactivate">Деактивировать</button>
-    <button class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-    <button class="btn btn-primary" id="pSave">Сохранить</button>
-  </div>
-</div></div></div>
+</div></div>
 
-<div class="modal fade" id="sessionModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
-  <div class="modal-header"><h5 class="modal-title">Новая партия</h5></div>
-  <div class="modal-body row g-2">
-    <div class="col-12"><label class="form-label small">Игра *</label><select class="form-select" id="sGame"></select></div>
-    <div class="col-12"><label class="form-label small">Стол *</label><select class="form-select" id="sTable"></select></div>
-    <div class="col-6"><label class="form-label small">Начало *</label><input type="datetime-local" class="form-control" id="sStart"></div>
-    <div class="col-6"><label class="form-label small">Окончание *</label><input type="datetime-local" class="form-control" id="sEnd"></div>
-    <div class="col-12"><label class="form-label small">Участники * (Ctrl — выбрать несколько)</label>
-      <select class="form-select" id="sPlayers" multiple size="8"></select>
-      <div class="form-text" id="sHint"></div></div>
+<!-- ====== ИГРА ====== -->
+<div class="modal fade" id="gameModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered">
+  <div class="modal-content">
+    <div class="modal-header"><h6 class="modal-title" id="gameModalTitle">Игра</h6></div>
+    <div class="modal-body row g-2">
+      <div class="col-12"><label class="form-label small mb-1">Название *</label><input class="form-control" id="gTitle" maxlength="100"></div>
+      <div class="col-12"><label class="form-label small mb-1">Жанр *</label><select class="form-select" id="gGenre"></select></div>
+      <div class="col-6"><label class="form-label small mb-1">Мин. игроков *</label><input type="number" min="1" class="form-control" id="gMin"></div>
+      <div class="col-6"><label class="form-label small mb-1">Макс. игроков *</label><input type="number" min="1" class="form-control" id="gMax"></div>
+      <div class="col-4"><label class="form-label small mb-1">Длит., мин *</label><input type="number" min="5" class="form-control" id="gDuration"></div>
+      <div class="col-4"><label class="form-label small mb-1">Сложность 1–5 *</label><input type="number" min="1" max="5" class="form-control" id="gComplexity"></div>
+      <div class="col-4"><label class="form-label small mb-1">Копий *</label><input type="number" min="1" class="form-control" id="gCopies"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline-danger me-auto" id="gDelete"><i class="bi bi-trash"></i> Удалить</button>
+      <button class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+      <button class="btn btn-primary" id="gSave"><i class="bi bi-check-lg"></i> Сохранить</button>
+    </div>
   </div>
-  <div class="modal-footer">
-    <button class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-    <button class="btn btn-primary" id="sSave">Создать</button>
+</div></div>
+
+<!-- ====== СТОЛ ====== -->
+<div class="modal fade" id="tableModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered">
+  <div class="modal-content">
+    <div class="modal-header"><h6 class="modal-title" id="tableModalTitle">Стол</h6></div>
+    <div class="modal-body row g-2">
+      <div class="col-6"><label class="form-label small mb-1">Номер</label>
+        <input type="number" min="1" class="form-control" id="tNumber">
+        <div class="form-text small">Оставьте пустым — присвоится автоматически.</div></div>
+      <div class="col-6"><label class="form-label small mb-1">Мест *</label><input type="number" min="2" class="form-control" id="tCapacity"></div>
+      <div class="col-12"><label class="form-label small mb-1">Описание</label>
+        <input class="form-control" id="tDesc" maxlength="255" placeholder="Например: стол у окна"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+      <button class="btn btn-primary" id="tSave"><i class="bi bi-check-lg"></i> Сохранить</button>
+    </div>
   </div>
-</div></div></div>
+</div></div>
+
+<!-- ====== ИГРОК ====== -->
+<div class="modal fade" id="playerModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+  <div class="modal-content">
+    <div class="modal-header"><h6 class="modal-title" id="playerModalTitle">Игрок</h6></div>
+    <div class="modal-body">
+      <div class="row g-2 mb-3">
+        <div class="col-md-6"><label class="form-label small mb-1">Имя *</label><input class="form-control" id="pName" maxlength="100"></div>
+        <div class="col-md-6"><label class="form-label small mb-1">Никнейм * <span class="text-muted">(3–30: буквы/цифры/_)</span></label>
+          <input class="form-control" id="pNick" maxlength="30"></div>
+      </div>
+      <div id="playerCard"></div>
+    </div>
+    <div class="modal-footer flex-wrap gap-1">
+      <button class="btn btn-outline-warning btn-sm me-auto" id="pBanWeek"><i class="bi bi-calendar-x"></i> Забанить на неделю</button>
+      <button class="btn btn-outline-danger btn-sm me-auto" id="pBanFull"><i class="bi bi-slash-circle"></i> Полный бан</button>
+      <button class="btn btn-success btn-sm me-auto d-none" id="pActivate"><i class="bi bi-person-check"></i> Разбанить</button>
+      <button class="btn btn-light" data-bs-dismiss="modal">Закрыть</button>
+      <button class="btn btn-primary" id="pSave"><i class="bi bi-check-lg"></i> Сохранить</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- ====== БАН: ПРИЧИНА ====== -->
+<div class="modal fade" id="banModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered">
+  <div class="modal-content">
+    <div class="modal-header"><h6 class="modal-title" id="banTitle">Бан игрока</h6></div>
+    <div class="modal-body">
+      <p class="small text-muted mb-2" id="banHint"></p>
+      <label class="form-label small mb-1">Причина бана * (до 512 символов)</label>
+      <textarea class="form-control" id="banReason" rows="3" maxlength="512"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+      <button class="btn btn-danger" id="banConfirm"><i class="bi bi-slash-circle"></i> Забанить</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- ====== НОВАЯ ПАРТИЯ ====== -->
+<div class="modal fade" id="sessionModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered">
+  <div class="modal-content">
+    <div class="modal-header"><h6 class="modal-title"><i class="bi bi-calendar-plus me-1"></i> Новая партия</h6></div>
+    <div class="modal-body row g-2">
+      <div class="col-12"><label class="form-label small mb-1">Игра *</label><select class="form-select" id="sGame"></select></div>
+      <div class="col-12"><label class="form-label small mb-1">Стол *</label><select class="form-select" id="sTable"></select></div>
+      <div class="col-6"><label class="form-label small mb-1">Начало *</label><input type="datetime-local" class="form-control" id="sStart"></div>
+      <div class="col-6"><label class="form-label small mb-1">Окончание *</label><input type="datetime-local" class="form-control" id="sEnd"></div>
+      <div class="col-12">
+        <label class="form-label small mb-1">Участники * <span class="text-muted">(Ctrl/Cmd — выбрать несколько)</span></label>
+        <select class="form-select" id="sPlayers" multiple size="8"></select>
+        <div class="form-text" id="sHint"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+      <button class="btn btn-primary" id="sSave"><i class="bi bi-plus-lg"></i> Создать</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- ====== ПЕРЕНОС ПАРТИИ ====== -->
+<div class="modal fade" id="rescheduleModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered">
+  <div class="modal-content">
+    <div class="modal-header"><h6 class="modal-title"><i class="bi bi-arrow-repeat me-1"></i> Перенос партии</h6></div>
+    <div class="modal-body row g-2">
+      <div class="col-12"><div class="small text-muted" id="rGameInfo"></div></div>
+      <div class="col-12"><label class="form-label small mb-1">Стол *</label><select class="form-select" id="rTable"></select></div>
+      <div class="col-6"><label class="form-label small mb-1">Новое начало *</label><input type="datetime-local" class="form-control" id="rStart"></div>
+      <div class="col-6"><label class="form-label small mb-1">Новое окончание *</label><input type="datetime-local" class="form-control" id="rEnd"></div>
+      <div class="col-12">
+        <label class="form-label small mb-1">Участники * <span class="text-muted">(Ctrl/Cmd — выбрать несколько)</span></label>
+        <select class="form-select" id="rPlayers" multiple size="8"></select>
+        <div class="form-text">Нельзя добавлять игрока, занятого в другой партии в это же время.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+      <button class="btn btn-primary" id="rSave"><i class="bi bi-check-lg"></i> Перенести</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- ====== КАЛЕНДАРНОЕ ОКНО ====== -->
+<div class="modal fade" id="calSessionModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered">
+  <div class="modal-content">
+    <div class="modal-header"><h6 class="modal-title"><i class="bi bi-info-circle me-1"></i> Партия</h6></div>
+    <div class="modal-body" id="calSessionBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-light" data-bs-dismiss="modal">Закрыть</button>
+      <button class="btn btn-primary" id="calOpenBtn"><i class="bi bi-box-arrow-up-right"></i> Открыть в «Партиях»</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- ====== ПОДТВЕРЖДЕНИЕ ====== -->
+<div class="modal fade" id="confirmModal" tabindex="-1"><div class="modal-dialog modal-sm modal-dialog-centered">
+  <div class="modal-content">
+    <div class="modal-body text-center pt-4">
+      <div class="mb-2" style="font-size:2.2rem;color:#f59e0b"><i class="bi bi-exclamation-triangle"></i></div>
+      <h6 class="mb-1" id="confirmTitle">Подтверждение</h6>
+      <p class="text-muted small mb-0" id="confirmText"></p>
+    </div>
+    <div class="modal-footer justify-content-center border-0 pt-0">
+      <button class="btn btn-light btn-sm" data-bs-dismiss="modal">Отмена</button>
+      <button class="btn btn-danger btn-sm" id="confirmYes">Да, продолжить</button>
+    </div>
+  </div>
+</div></div>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner-border text-primary" role="status" style="width:3rem;height:3rem"></div>
+</div>
 
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toasts"></div>
 
@@ -211,31 +516,42 @@ const state = {
   token: sessionStorage.getItem('token'),
   user: JSON.parse(sessionStorage.getItem('user') || 'null'),
   sessionId: null, sessionsPage: 1, gamesPage: 1, playersPage: 1,
-  gameId: null, playerId: null,
+  gameId: null, playerId: null, tableId: null,
+  sort: {},
+  banMode: null,     // 'week' | 'full'
+  calFrom: null, calTo: null,
 };
 const STATUS = {
-  planned: ['Запланирована', 'secondary'], active: ['Идёт', 'primary'],
-  finished: ['Завершена', 'success'], cancelled: ['Отменена', 'danger'],
+  planned:  {label:'Запланирована', cls:'secondary', dot:'planned'},
+  active:   {label:'Идёт',          cls:'primary',   dot:'active'},
+  finished: {label:'Завершена',     cls:'success',   dot:'finished'},
+  cancelled:{label:'Отменена',      cls:'danger',    dot:'cancelled'},
 };
 const modal = id => bootstrap.Modal.getOrCreateInstance($(id));
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const fmtDT = s => s ? new Date(s).toLocaleString('ru-RU', {dateStyle: 'short', timeStyle: 'short'}) : '';
+const fmtDT   = s => s ? new Date(s).toLocaleString('ru-RU', {dateStyle:'short', timeStyle:'short'}) : '';
 const fmtDate = s => s ? new Date(s).toLocaleDateString('ru-RU') : '';
-const delta = v => v == null ? '' : `<span class="text-${v > 0 ? 'success' : v < 0 ? 'danger' : 'muted'}">${v > 0 ? '+' : ''}${v}</span>`;
-const badge = st => `<span class="badge bg-${STATUS[st][1]}">${STATUS[st][0]}</span>`;
+const fmtTime = s => s ? new Date(s).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '';
+const delta = v => v == null ? '' : `<span class="fw-semibold text-${v>0?'success':v<0?'danger':'muted'}">${v>0?'+':''}${v}</span>`;
+const badge = st => `<span class="badge bg-${STATUS[st].cls}"><span class="dot dot-${STATUS[st].dot}"></span>${STATUS[st].label}</span>`;
 const isAdmin = () => state.user?.role === 'admin';
-const qs = obj => new URLSearchParams(Object.entries(obj).filter(([, v]) => v !== '' && v != null)).toString();
-const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const qs = obj => new URLSearchParams(Object.entries(obj).filter(([,v]) => v !== '' && v != null)).toString();
+const debounce = (fn, ms=300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const placePill = p => p == null ? '' :
+  `<span class="score-pill ${p===1?'place-1':p===2?'place-2':p===3?'place-3':''}">${p}</span>`;
+const toLocalInput = d => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+const fromLocalInput = s => s ? new Date(s) : null;
+const isoDay = d => { const x = new Date(d); x.setHours(0,0,0,0); return x.toISOString().slice(0,10); };
 
-async function api(path, {method = 'GET', body} = {}) {
-  const headers = {'Content-Type': 'application/json'};
+const loading = { n: 0, show(){ this.n++; $('loading').classList.add('show'); },
+  hide(){ this.n = Math.max(0, this.n-1); if (!this.n) $('loading').classList.remove('show'); } };
+
+async function api(path, {method='GET', body} = {}) {
+  const headers = {'Content-Type':'application/json'};
   if (state.token) headers.Authorization = 'Bearer ' + state.token;
   let res;
-  try {
-    res = await fetch('/api' + path, {method, headers, body: body ? JSON.stringify(body) : undefined});
-  } catch {
-    throw new Error('Сервер недоступен, проверьте подключение');
-  }
+  try { res = await fetch('/api' + path, {method, headers, body: body ? JSON.stringify(body) : undefined}); }
+  catch { throw new Error('Сервер недоступен, проверьте подключение'); }
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -245,54 +561,123 @@ async function api(path, {method = 'GET', body} = {}) {
   return data;
 }
 
-function toast(message, ok = true) {
+function toast(message, ok=true) {
   const el = document.createElement('div');
-  el.className = `toast align-items-center text-bg-${ok ? 'success' : 'danger'} border-0`;
-  el.innerHTML = `<div class="d-flex"><div class="toast-body">${esc(message)}</div>
+  const icon = ok ? 'check-circle-fill' : 'exclamation-triangle-fill';
+  el.className = `toast align-items-center text-bg-${ok?'success':'danger'} border-0`;
+  el.innerHTML = `<div class="d-flex">
+    <div class="toast-body"><i class="bi bi-${icon} me-2"></i>${esc(message)}</div>
     <button class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
   $('toasts').append(el);
-  new bootstrap.Toast(el, {delay: ok ? 2500 : 6000}).show();
+  new bootstrap.Toast(el, {delay: ok ? 2600 : 6500}).show();
   el.addEventListener('hidden.bs.toast', () => el.remove());
 }
 
-async function run(fn, successMessage) {
-  try {
-    const result = await fn();
-    if (successMessage) toast(successMessage);
-    return result;
-  } catch (e) {
-    toast(e.message, false);
-  }
+async function run(fn, okMsg) {
+  try { loading.show(); const r = await fn(); if (okMsg) toast(okMsg); return r; }
+  catch (e) { toast(e.message, false); }
+  finally { loading.hide(); }
+}
+
+function confirmDialog(text, title='Подтверждение') {
+  return new Promise(resolve => {
+    $('confirmTitle').textContent = title;
+    $('confirmText').textContent = text;
+    const m = modal('confirmModal');
+    const yes = $('confirmYes');
+    const onYes = () => { yes.removeEventListener('click', onYes); m.hide(); resolve(true); };
+    yes.addEventListener('click', onYes);
+    $('confirmModal').addEventListener('hidden.bs.modal', () => resolve(false), {once:true});
+    m.show();
+  });
 }
 
 function renderTable(el, columns, rows, onRowClick, selectedKey) {
-  el.innerHTML = `<thead><tr>${columns.map(c => `<th>${c.title}</th>`).join('')}</tr></thead>
-    <tbody>${rows.length ? rows.map((r, i) => `<tr data-i="${i}" class="${selectedKey != null && r.id === selectedKey ? 'selected' : ''}">
+  const sort = state.sort[el.id];
+  let data = [...rows];
+  if (sort) {
+    const col = columns.find(c => (c.sortKey || c.key) === sort.key);
+    const k = col?.sortKey || sort.key;
+    data.sort((a, b) => {
+      const va = a[k], vb = b[k];
+      if (va == null) return 1; if (vb == null) return -1;
+      const r = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb), 'ru');
+      return sort.dir === 'asc' ? r : -r;
+    });
+  }
+  const th = columns.map(c => {
+    const sk = c.sortKey || c.key;
+    const cls = sort?.key === sk ? sort.dir : '';
+    return `<th ${sk ? `data-sort="${sk}" class="${cls}"` : ''}>${c.title}</th>`;
+  }).join('');
+  el.innerHTML = `<thead><tr>${th}</tr></thead>
+    <tbody>${data.length ? data.map((r,i) => `<tr data-i="${i}" class="${selectedKey != null && r.id === selectedKey ? 'selected' : ''}">
       ${columns.map(c => `<td>${c.html ? c.html(r) : esc(c.fmt ? c.fmt(r[c.key], r) : r[c.key])}</td>`).join('')}</tr>`).join('')
-      : `<tr><td colspan="${columns.length}" class="text-muted text-center">Нет данных</td></tr>`}</tbody>`;
+      : `<tr><td colspan="${columns.length}"><div class="empty"><i class="bi bi-inbox"></i>Нет данных</div></td></tr>`}</tbody>`;
   if (onRowClick) el.querySelectorAll('tbody tr[data-i]').forEach(tr =>
-    tr.addEventListener('click', () => onRowClick(rows[tr.dataset.i])));
+    tr.addEventListener('click', e => { if (e.target.closest('button,input,select,a,textarea')) return; onRowClick(data[+tr.dataset.i]); }));
+  el.querySelectorAll('th[data-sort]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    const cur = state.sort[el.id];
+    state.sort[el.id] = {key: k, dir: cur?.key === k && cur.dir === 'asc' ? 'desc' : 'asc'};
+    renderTable(el, columns, rows, onRowClick, selectedKey);
+  }));
 }
 
 function renderPager(el, {total, page, size}, go) {
   const pages = Math.max(1, Math.ceil(total / size));
-  el.innerHTML = `<div class="d-flex justify-content-between align-items-center small">
+  el.innerHTML = `<div class="d-flex justify-content-between align-items-center small mt-2">
     <span class="text-muted">Всего: ${total}</span>
     <div class="btn-group btn-group-sm">
-      <button class="btn btn-outline-secondary" ${page <= 1 ? 'disabled' : ''} data-p="${page - 1}">‹</button>
+      <button class="btn btn-outline-secondary" ${page<=1?'disabled':''} data-p="${page-1}"><i class="bi bi-chevron-left"></i></button>
       <span class="btn btn-outline-secondary disabled">${page} / ${pages}</span>
-      <button class="btn btn-outline-secondary" ${page >= pages ? 'disabled' : ''} data-p="${page + 1}">›</button>
+      <button class="btn btn-outline-secondary" ${page>=pages?'disabled':''} data-p="${page+1}"><i class="bi bi-chevron-right"></i></button>
     </div></div>`;
   el.querySelectorAll('button[data-p]').forEach(b => b.addEventListener('click', () => go(+b.dataset.p)));
 }
 
-function sparkline(values) {
-  if (values.length < 2) return '';
-  const w = 400, h = 80, min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
-  const pts = values.map((v, i) => `${(i / (values.length - 1) * (w - 10) + 5).toFixed(1)},${(h - 5 - (v - min) / span * (h - 10)).toFixed(1)}`).join(' ');
-  return `<svg viewBox="0 0 ${w} ${h}" class="w-100" style="max-height:90px">
-    <polyline points="${pts}" fill="none" stroke="#0d6efd" stroke-width="2"/></svg>
-    <div class="d-flex justify-content-between small text-muted"><span>мин. ${min}</span><span>макс. ${max}</span></div>`;
+/* Точечный график с tooltip */
+function ratingChart(points) {
+  if (!points || points.length < 1) return '';
+  if (points.length === 1) {
+    return `<div class="text-center small text-muted py-3">Одна точка: ${fmtDate(points[0].date)} — рейтинг ${points[0].rating}</div>`;
+  }
+  const w = 520, h = 160, pad = 24;
+  const values = points.map(p => p.rating);
+  const min = Math.min(...values), max = Math.max(...values), span = max - min || 1;
+  const xs = points.map((_, i) => pad + i/(points.length-1)*(w-2*pad));
+  const ys = points.map(p => h - pad - (p.rating - min)/span*(h-2*pad));
+  const pathPts = xs.map((x,i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ');
+  const area = `${xs[0].toFixed(1)},${(h-pad)} ${pathPts} ${xs[xs.length-1].toFixed(1)},${(h-pad)}`;
+  const dots = points.map((p, i) => {
+    const dd = p.delta == null ? '' : `Δ ${p.delta > 0 ? '+' : ''}${p.delta}`;
+    return `<circle class="rating-point" cx="${xs[i].toFixed(1)}" cy="${ys[i].toFixed(1)}"
+      r="4.5" fill="#fff" stroke="#4f46e5" stroke-width="2">
+      <title>${fmtDate(p.date)} · ${p.rating} (${dd})</title>
+    </circle>`;
+  }).join('');
+  return `<div class="spark-wrap"><svg viewBox="0 0 ${w} ${h}" class="w-100" style="max-height:170px">
+    <defs><linearGradient id="rg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#4f46e5" stop-opacity=".22"/>
+      <stop offset="1" stop-color="#4f46e5" stop-opacity="0"/>
+    </linearGradient></defs>
+    <polygon points="${area}" fill="url(#rg)"/>
+    <polyline points="${pathPts}" fill="none" stroke="#4f46e5" stroke-width="2.2" stroke-linejoin="round"/>
+    ${dots}
+  </svg>
+  <div class="d-flex justify-content-between small text-muted mt-1">
+    <span>мин. ${min}</span><span>макс. ${max}</span></div></div>`;
+}
+
+/* Построение точек графика по истории партий */
+function buildRatingPoints(history, initial = 1000) {
+  if (!history.length) return [];
+  const sorted = [...history].sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
+  let acc = initial;
+  return sorted.map(h => {
+    acc += (h.rating_delta || 0);
+    return { date: h.starts_at, rating: h.rating_after ?? acc, delta: h.rating_delta };
+  });
 }
 
 function showView(name) {
@@ -300,30 +685,32 @@ function showView(name) {
   if (name === 'dicts' && !isAdmin()) name = 'sessions';
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
   document.querySelectorAll('.nav-link').forEach(a => a.classList.toggle('active', a.dataset.view === name));
-  ({rating: loadRating, sessions: loadSessions, games: loadGames, players: loadPlayers,
-    dicts: loadDicts, reports: loadReport})[name]();
+  ({rating:loadRating, calendar:loadCalendar, sessions:loadSessions, games:loadGames,
+    players:loadPlayers, dicts:loadDicts, reports:loadReport})[name]();
 }
 
 function setUser(token, user) {
   state.token = token; state.user = user;
   if (token) { sessionStorage.setItem('token', token); sessionStorage.setItem('user', JSON.stringify(user)); }
-  else { sessionStorage.clear(); }
+  else sessionStorage.clear();
   document.querySelectorAll('.staff').forEach(e => e.classList.toggle('d-none', !user));
   document.querySelectorAll('.admin').forEach(e => e.classList.toggle('d-none', !isAdmin()));
-  $('who').textContent = user ? `${user.full_name} (${user.role === 'admin' ? 'администратор' : 'ведущий'})` : '';
-  $('authBtn').textContent = user ? 'Выйти' : 'Войти';
+  $('who').textContent = user ? `${user.full_name} · ${user.role === 'admin' ? 'администратор' : 'ведущий'}` : '';
+  $('authBtn').innerHTML = user ? '<i class="bi bi-box-arrow-right"></i> Выйти'
+                                : '<i class="bi bi-box-arrow-in-right"></i> Войти';
 }
 
 $('authBtn').addEventListener('click', async () => {
   if (!state.user) return modal('loginModal').show();
-  await api('/logout', {method: 'POST'}).catch(() => {});
+  await api('/logout', {method:'POST'}).catch(() => {});
   setUser(null, null);
   showView('rating');
 });
 
 $('loginBtn').addEventListener('click', () => run(async () => {
-  const data = await api('/login', {method: 'POST', body: {login: $('loginInput').value, password: $('passwordInput').value}});
-  setUser(data.token, {id: data.id, full_name: data.full_name, role: data.role});
+  const data = await api('/login', {method:'POST',
+    body:{login:$('loginInput').value, password:$('passwordInput').value}});
+  setUser(data.token, {id:data.id, full_name:data.full_name, role:data.role});
   $('passwordInput').value = '';
   modal('loginModal').hide();
   showView('sessions');
@@ -332,12 +719,15 @@ $('passwordInput').addEventListener('keydown', e => e.key === 'Enter' && $('logi
 
 document.querySelectorAll('.nav-link').forEach(a => a.addEventListener('click', () => showView(a.dataset.view)));
 
+/* ============ РЕЙТИНГ ============ */
 async function loadRating() {
-  const rows = await run(() => api('/public/rating?' + qs({search: $('ratingSearch').value})));
+  const rows = await run(() => api('/public/rating?' + qs({search:$('ratingSearch').value})));
   if (!rows) return;
+  $('ratingCount').textContent = `${rows.length} игроков`;
   renderTable($('ratingTable'), [
-    {key: 'place', title: '#'}, {key: 'nickname', title: 'Никнейм'}, {key: 'rating', title: 'Рейтинг'},
-    {key: 'games_played', title: 'Партий'}, {key: 'wins', title: 'Побед'}, {key: 'win_pct', title: '% побед', fmt: v => v + '%'},
+    {key:'place', title:'#'}, {key:'nickname', title:'Никнейм'}, {key:'rating', title:'Рейтинг'},
+    {key:'games_played', title:'Партий'}, {key:'wins', title:'Побед'},
+    {key:'win_pct', title:'% побед', fmt:v => v + '%'},
   ], rows, r => showPublicPlayer(r.nickname));
 }
 $('ratingSearch').addEventListener('input', debounce(loadRating));
@@ -346,31 +736,148 @@ async function showPublicPlayer(nickname) {
   const data = await run(() => api('/public/players/' + encodeURIComponent(nickname)));
   if (!data) return;
   const s = data.stats;
-  const ratings = [...data.history].reverse().reduce((acc, h) => [...acc, acc.at(-1) + h.rating_delta], [1000]);
-  $('ratingCard').innerHTML = `<div class="card"><div class="card-body">
-    <h5>${esc(s.nickname)} <span class="badge bg-dark">#${s.place}</span></h5>
-    <p class="mb-2">Рейтинг <b>${s.rating}</b> · партий ${s.games_played} · побед ${s.wins} (${s.win_pct}%)</p>
-    ${sparkline(ratings)}
-    <table class="table table-sm mt-2" id="publicHistory"></table></div></div>`;
+  const points = buildRatingPoints(data.history);
+  $('ratingCard').innerHTML = `<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="bi bi-person-badge me-1"></i> ${esc(s.nickname)}</span>
+      <span class="badge bg-dark">место #${s.place}</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-2 mb-3">
+        <div class="col-4"><div class="stat"><div class="label">Рейтинг</div><div class="value">${s.rating}</div></div></div>
+        <div class="col-4"><div class="stat"><div class="label">Партий</div><div class="value">${s.games_played}</div></div></div>
+        <div class="col-4"><div class="stat"><div class="label">Побед</div><div class="value">${s.wins} <span class="fs-6 text-muted">(${s.win_pct}%)</span></div></div></div>
+      </div>
+      <h6 class="text-muted small text-uppercase">Динамика рейтинга <span class="text-lowercase fw-normal">— наведите на точки</span></h6>
+      ${ratingChart(points) || '<p class="small text-muted">Недостаточно данных</p>'}
+      <h6 class="text-muted small text-uppercase mt-3">История партий</h6>
+      <div class="table-responsive"><table class="table table-sm" id="publicHistory"></table></div>
+    </div></div>`;
   renderTable($('publicHistory'), [
-    {key: 'starts_at', title: 'Дата', fmt: fmtDate}, {key: 'game', title: 'Игра'},
-    {key: 'place', title: 'Место', fmt: (v, r) => `${v} из ${r.players}`}, {key: 'score', title: 'Очки'},
-    {title: 'Δ рейтинга', html: r => delta(r.rating_delta)},
+    {key:'starts_at', title:'Дата', fmt:fmtDate, sortKey:'starts_at'},
+    {key:'game', title:'Игра', sortKey:'game'},
+    {key:'place', title:'Место', html:r => `${placePill(r.place)} <span class="text-muted small">из ${r.players}</span>`},
+    {key:'score', title:'Очки'},
+    {title:'Δ рейтинга', html:r => delta(r.rating_delta), sortKey:'rating_delta'},
   ], data.history);
 }
 
+/* ============ КАЛЕНДАРЬ ============ */
+function getMonday(d) {
+  const x = new Date(d); x.setHours(0,0,0,0);
+  const day = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - day);
+  return x;
+}
+function setCalendarRange(from, to) {
+  state.calFrom = from; state.calTo = to;
+  $('calFrom').value = isoDay(from);
+  $('calTo').value = isoDay(to);
+}
+$('calPrev').addEventListener('click', () => {
+  const f = new Date(state.calFrom); f.setDate(f.getDate() - 7);
+  const t = new Date(state.calTo);   t.setDate(t.getDate() - 7);
+  setCalendarRange(f, t); loadCalendar();
+});
+$('calNext').addEventListener('click', () => {
+  const f = new Date(state.calFrom); f.setDate(f.getDate() + 7);
+  const t = new Date(state.calTo);   t.setDate(t.getDate() + 7);
+  setCalendarRange(f, t); loadCalendar();
+});
+$('calToday').addEventListener('click', () => {
+  const mon = getMonday(new Date());
+  const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+  setCalendarRange(mon, sun); loadCalendar();
+});
+$('calApply').addEventListener('click', () => {
+  const f = $('calFrom').value ? new Date($('calFrom').value) : getMonday(new Date());
+  const t = $('calTo').value   ? new Date($('calTo').value)   : new Date(f);
+  setCalendarRange(f, t); loadCalendar();
+});
+
+async function loadCalendar() {
+  if (!state.calFrom) {
+    const mon = getMonday(new Date());
+    const sun = new Date(mon); sun.setDate(sun.getDate() + 6);
+    setCalendarRange(mon, sun);
+  }
+  const from = isoDay(state.calFrom), to = isoDay(state.calTo);
+  const rows = await run(() => api(`/calendar?date_from=${from}&date_to=${to}`));
+  if (!rows) return;
+  $('calRange').textContent = `${fmtDate(state.calFrom)} — ${fmtDate(state.calTo)}`;
+
+  const byDay = {};
+  rows.forEach(s => {
+    const d = s.starts_at.slice(0, 10);
+    (byDay[d] = byDay[d] || []).push(s);
+  });
+
+  const start = getMonday(state.calFrom);
+  const end = new Date(state.calTo); end.setHours(23,59,59,999);
+  const todayStr = isoDay(new Date());
+
+  let html = '<div class="cal-grid">';
+  const cur = new Date(start);
+  const days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  while (cur <= end) {
+    for (let i = 0; i < 7; i++) {
+      const dStr = isoDay(cur);
+      const sessions = (byDay[dStr] || []).sort((a,b) => a.starts_at.localeCompare(b.starts_at));
+      const isToday = dStr === todayStr;
+      const inRange = cur >= new Date(isoDay(state.calFrom)) && cur <= new Date(isoDay(state.calTo));
+      html += `<div class="cal-cell ${isToday ? 'today' : ''} ${inRange ? '' : 'dim'}">
+        <div class="cal-day">${days[i]} ${cur.getDate()}.${String(cur.getMonth()+1).padStart(2,'0')}</div>
+        ${sessions.map(s => `
+          <div class="cal-item status-${s.status}" data-id="${s.id}" title="${esc(s.game)} (${STATUS[s.status].label})">
+            <div class="t">${fmtTime(s.starts_at)}–${fmtTime(s.ends_at)}</div>
+            <div class="g">${esc(s.game)}</div>
+            <div class="m">Стол ${s.table_number} · ${s.players_count} чел.</div>
+          </div>`).join('')}
+      </div>`;
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  html += '</div>';
+  $('calendarGrid').innerHTML = html;
+  document.querySelectorAll('.cal-item').forEach(el =>
+    el.addEventListener('click', () => openCalendarSession(+el.dataset.id, rows)));
+}
+
+async function openCalendarSession(id, rows) {
+  const s = rows.find(x => x.id === id);
+  if (!s) return;
+  $('calSessionBody').innerHTML = `
+    <h5 class="mb-1">${esc(s.game)} ${badge(s.status)}</h5>
+    <div class="small text-muted mb-3">
+      <i class="bi bi-clock"></i> ${fmtDT(s.starts_at)} – ${fmtDT(s.ends_at)}<br>
+      <i class="bi bi-table"></i> Стол ${s.table_number}${s.table_description ? ' — ' + esc(s.table_description) : ''} (мест: ${s.capacity})<br>
+      <i class="bi bi-people"></i> Участников: ${s.players_count}<br>
+      <i class="bi bi-person-badge"></i> Ведущий: ${esc(s.host)}
+    </div>`;
+  $('calOpenBtn').onclick = () => {
+    modal('calSessionModal').hide();
+    showView('sessions');
+    setTimeout(() => selectSession(s.id), 200);
+  };
+  modal('calSessionModal').show();
+}
+
+/* ============ ПАРТИИ ============ */
 async function loadSessions(page = state.sessionsPage) {
-  const data = await run(() => api('/sessions?' + qs({status: $('sessionStatus').value, page})));
+  const data = await run(() => api('/sessions?' + qs({status:$('sessionStatus').value, date_from:$('sessionDate').value, page})));
   if (!data) return;
   state.sessionsPage = data.page;
   renderTable($('sessionsTable'), [
-    {key: 'starts_at', title: 'Начало', fmt: fmtDT}, {key: 'game', title: 'Игра'},
-    {key: 'table_number', title: 'Стол'}, {key: 'players_count', title: 'Игроков'},
-    {title: 'Статус', html: r => badge(r.status)},
+    {key:'starts_at', title:'Начало', fmt:fmtDT, sortKey:'starts_at'},
+    {key:'game', title:'Игра', sortKey:'game'},
+    {key:'table_number', title:'Стол', sortKey:'table_number'},
+    {key:'players_count', title:'👥', sortKey:'players_count'},
+    {title:'Статус', html:r => badge(r.status), sortKey:'status'},
   ], data.items, r => selectSession(r.id), state.sessionId);
   renderPager($('sessionsPager'), data, loadSessions);
 }
 $('sessionStatus').addEventListener('change', () => loadSessions(1));
+$('sessionDate').addEventListener('change', () => loadSessions(1));
 
 async function selectSession(id) {
   const s = await run(() => api('/sessions/' + id));
@@ -381,77 +888,158 @@ async function selectSession(id) {
 }
 
 function renderSession(s) {
-  const planned = s.status === 'planned', active = s.status === 'active';
+  const planned = s.status === 'planned', active = s.status === 'active', done = s.status === 'finished';
   $('sessionDetail').innerHTML = `
-    <div class="d-flex justify-content-between align-items-start">
-      <div><h5 class="mb-1">${esc(s.game)} ${badge(s.status)}</h5>
-        <div class="small text-muted">${fmtDT(s.starts_at)} – ${fmtDT(s.ends_at)} · стол ${s.table_number}, мест: ${s.capacity} ·
-          игроков ${s.min_players}–${s.max_players} · ведущий ${esc(s.host)}</div></div>
-      <div class="btn-group btn-group-sm">
-        ${planned ? '<button class="btn btn-primary" id="startBtn">Начать</button>' : ''}
-        ${active ? '<button class="btn btn-outline-primary" id="saveScoresBtn">Сохранить очки</button><button class="btn btn-success" id="finishBtn">Завершить</button>' : ''}
-        ${planned || active ? '<button class="btn btn-outline-danger" id="cancelBtn">Отменить</button>' : ''}
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1">${esc(s.game)} ${badge(s.status)}</h5>
+        <div class="small text-muted">
+          <i class="bi bi-clock"></i> ${fmtDT(s.starts_at)} – ${fmtDT(s.ends_at)}
+          &nbsp;·&nbsp; <i class="bi bi-table"></i> Стол ${s.table_number}${s.table_description ? ' ('+esc(s.table_description)+')' : ''} (мест ${s.capacity})
+          &nbsp;·&nbsp; <i class="bi bi-people"></i> ${s.min_players}–${s.max_players}
+          &nbsp;·&nbsp; <i class="bi bi-person-badge"></i> ${esc(s.host)}
+        </div>
+      </div>
+      <div class="btn-group btn-group-sm flex-wrap">
+        ${planned ? '<button class="btn btn-primary" id="startBtn"><i class="bi bi-play-fill"></i> Начать</button>' : ''}
+        ${active ? '<button class="btn btn-outline-primary" id="saveScoresBtn"><i class="bi bi-save"></i> Сохранить очки</button>'+
+                   '<button class="btn btn-success" id="finishBtn"><i class="bi bi-flag-fill"></i> Завершить</button>' : ''}
+        ${(planned || active) ? '<button class="btn btn-outline-danger" id="cancelBtn"><i class="bi bi-x-lg"></i> Отменить</button>' : ''}
+        ${planned ? '<button class="btn btn-outline-secondary" id="rescheduleBtn"><i class="bi bi-arrow-repeat"></i> Перенести</button>' : ''}
       </div>
     </div>
-    <table class="table table-sm mt-3" id="participants"></table>
-    ${planned ? `<div class="d-flex gap-2"><select class="form-select form-select-sm" id="addPlayerSelect"></select>
-      <button class="btn btn-outline-primary btn-sm text-nowrap" id="addPlayerBtn">Добавить игрока</button></div>` : ''}`;
+    <div class="table-responsive mt-3"><table class="table table-sm" id="participants"></table></div>
+    ${planned ? `<div class="input-group input-group-sm mt-2">
+      <select class="form-select" id="addPlayerSelect"></select>
+      <button class="btn btn-outline-primary" id="addPlayerBtn"><i class="bi bi-person-plus"></i> Добавить</button>
+    </div>` : ''}
+    ${(active || done) ? `<div class="mt-3 d-flex align-items-center gap-2">
+      <button class="btn btn-outline-primary btn-sm" id="saveAttBtn">
+        <i class="bi bi-clipboard-check"></i> Сохранить посещаемость</button>
+      <span class="small text-muted">Отметьте галочкой тех, кто пришёл.</span>
+    </div>` : ''}`;
+
+  const colAtt = (active || done) ? [{
+    title: 'Пришёл',
+    html: r => `<div class="att-cell"><input type="checkbox" class="form-check-input att-box"
+      data-player="${r.player_id}" ${r.attended === 1 || r.attended === true ? 'checked' : ''}></div>`
+  }] : [];
 
   renderTable($('participants'), [
-    {key: 'nickname', title: 'Никнейм'}, {key: 'name', title: 'Имя'},
-    {title: 'Очки', html: r => active
+    {key:'nickname', title:'Никнейм'},
+    {key:'name', title:'Имя'},
+    {title:'Очки', html:r => active
       ? `<input type="number" min="0" class="form-control form-control-sm score-input" data-player="${r.player_id}" value="${r.score ?? ''}">`
-      : esc(r.score)},
-    {key: 'place', title: 'Место'}, {title: 'Δ рейтинга', html: r => delta(r.rating_delta)},
-    ...(planned ? [{title: '', html: r => `<button class="btn btn-link btn-sm text-danger p-0" data-remove="${r.player_id}">убрать</button>`}] : []),
+      : `<span class="fw-semibold">${esc(r.score ?? '—')}</span>`, sortKey:'score'},
+    {key:'place', title:'Место', html:r => placePill(r.place) || '—', sortKey:'place'},
+    {title:'Δ рейтинга', html:r => delta(r.rating_delta), sortKey:'rating_delta'},
+    ...colAtt,
+    ...(planned ? [{title:'', html:r => `<button class="btn btn-link btn-sm text-danger p-0" data-remove="${r.player_id}"><i class="bi bi-trash"></i></button>`}] : []),
   ], s.players);
 
-  const go = (path, msg, body) => run(async () => renderSession(await api(`/sessions/${s.id}${path}`, {method: 'POST', body})), msg).then(() => loadSessions());
-  $('startBtn')?.addEventListener('click', () => go('/start', 'Партия началась'));
-  $('cancelBtn')?.addEventListener('click', () => confirm('Отменить партию?') && go('/cancel', 'Партия отменена'));
+  const go = (path, msg, body) => run(async () => {
+    renderSession(await api(`/sessions/${s.id}${path}`, {method:'POST', body}));
+  }, msg).then(() => loadSessions());
+
+  $('startBtn')?.addEventListener('click', async () => {
+    if (await confirmDialog('Начать партию?', 'Старт партии')) go('/start', 'Партия началась');
+  });
+  $('cancelBtn')?.addEventListener('click', async () => {
+    if (await confirmDialog('Отменить партию? Действие необратимо.', 'Отмена партии')) go('/cancel', 'Партия отменена');
+  });
 
   if (active) {
     const inputs = [...document.querySelectorAll('.score-input')];
-    const scores = () => inputs.map(i => ({player_id: +i.dataset.player, score: +i.value}));
-    const refresh = () => $('finishBtn').disabled = inputs.some(i => i.value === '');
+    const scores = () => inputs.map(i => ({player_id:+i.dataset.player, score:+i.value}));
+    const refresh = () => {
+      inputs.forEach(i => i.classList.toggle('done', i.value !== ''));
+      $('finishBtn').disabled = inputs.some(i => i.value === '');
+    };
     inputs.forEach(i => i.addEventListener('input', refresh));
     refresh();
     $('saveScoresBtn').addEventListener('click', () => run(async () =>
-      renderSession(await api(`/sessions/${s.id}/scores`, {method: 'PUT', body: {scores: scores()}})), 'Очки сохранены'));
+      renderSession(await api(`/sessions/${s.id}/scores`, {method:'PUT', body:{scores:scores()}})), 'Очки сохранены'));
     $('finishBtn').addEventListener('click', () => run(async () => {
-      await api(`/sessions/${s.id}/scores`, {method: 'PUT', body: {scores: scores()}});
-      renderSession(await api(`/sessions/${s.id}/finish`, {method: 'POST'}));
+      await api(`/sessions/${s.id}/scores`, {method:'PUT', body:{scores:scores()}});
+      renderSession(await api(`/sessions/${s.id}/finish`, {method:'POST'}));
       loadSessions();
     }, 'Партия завершена, рейтинг пересчитан'));
   }
 
+  if (active || done) {
+    $('saveAttBtn').addEventListener('click', () => {
+      const boxes = [...document.querySelectorAll('.att-box')];
+      const attendance = boxes.map(b => ({player_id:+b.dataset.player, attended: b.checked}));
+      run(async () => renderSession(await api(`/sessions/${s.id}/attendance`, {method:'PUT', body:{attendance}})),
+          'Посещаемость сохранена');
+    });
+  }
+
   if (planned) {
-    document.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', e => {
+    document.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', async e => {
       e.stopPropagation();
-      run(async () => renderSession(await api(`/sessions/${s.id}/players/${b.dataset.remove}`, {method: 'DELETE'})), 'Игрок убран')
+      if (!await confirmDialog('Убрать игрока из партии?', 'Удаление игрока')) return;
+      run(async () => renderSession(await api(`/sessions/${s.id}/players/${b.dataset.remove}`, {method:'DELETE'})), 'Игрок убран')
         .then(() => loadSessions());
     }));
     run(async () => {
       const {items} = await api('/players?size=100');
       const inGame = new Set(s.players.map(p => p.player_id));
-      $('addPlayerSelect').innerHTML = items.filter(p => !inGame.has(p.id))
+      const opts = items.filter(p => !inGame.has(p.id))
         .map(p => `<option value="${p.id}">${esc(p.nickname)} — ${esc(p.name)}</option>`).join('');
+      $('addPlayerSelect').innerHTML = opts || '<option disabled>Нет доступных игроков</option>';
     });
     $('addPlayerBtn').addEventListener('click', () => run(async () =>
-      renderSession(await api(`/sessions/${s.id}/players`, {method: 'POST', body: {player_id: +$('addPlayerSelect').value}})),
+      renderSession(await api(`/sessions/${s.id}/players`, {method:'POST', body:{player_id:+$('addPlayerSelect').value}})),
       'Игрок добавлен').then(() => loadSessions()));
+
+    $('rescheduleBtn').addEventListener('click', () => openReschedule(s));
   }
 }
 
-const toLocalInput = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+async function openReschedule(s) {
+  await run(async () => {
+    const [tables, {items: players}] = await Promise.all([api('/tables'), api('/players?size=100')]);
+    $('rGameInfo').innerHTML = `<i class="bi bi-controller"></i> <b>${esc(s.game)}</b> · ${s.min_players}–${s.max_players} игроков · длительность рассчитается из старого времени`;
+    $('rTable').innerHTML = tables.map(t =>
+      `<option value="${t.id}" ${t.id === s.table_id ? 'selected' : ''}>Стол ${t.number}${t.description ? ' — '+esc(t.description) : ''} (мест ${t.capacity})</option>`).join('');
+    const inGame = new Set(s.players.map(p => p.player_id));
+    $('rPlayers').innerHTML = players.map(p =>
+      `<option value="${p.id}" ${inGame.has(p.id) ? 'selected' : ''}>${esc(p.nickname)} — ${esc(p.name)}</option>`).join('');
+    const oldStart = new Date(s.starts_at), oldEnd = new Date(s.ends_at);
+    const dur = Math.round((oldEnd - oldStart) / 60000);
+    $('rStart').value = toLocalInput(oldStart);
+    $('rEnd').value = toLocalInput(oldEnd);
+    $('rStart').onchange = () => {
+      if (!$('rStart').value) return;
+      $('rEnd').value = toLocalInput(new Date(new Date($('rStart').value).getTime() + dur*60000));
+    };
+  });
+  modal('rescheduleModal').show();
+}
+
+$('rSave').addEventListener('click', () => run(async () => {
+  const id = state.sessionId;
+  const updated = await api('/sessions/' + id, {method:'PUT', body:{
+    starts_at: $('rStart').value, ends_at: $('rEnd').value,
+    table_id: +$('rTable').value,
+    player_ids: [...$('rPlayers').selectedOptions].map(o => +o.value),
+  }});
+  modal('rescheduleModal').hide();
+  renderSession(updated);
+  loadSessions();
+}, 'Партия перенесена'));
 
 $('newSessionBtn').addEventListener('click', () => run(async () => {
   const [games, tables, players] = await Promise.all([api('/games?size=100'), api('/tables'), api('/players?size=100')]);
   state.newSessionGames = games.items;
-  $('sGame').innerHTML = games.items.map(g => `<option value="${g.id}">${esc(g.title)} (${g.min_players}–${g.max_players} игроков, ${g.duration_min} мин)</option>`).join('');
-  $('sTable').innerHTML = tables.map(t => `<option value="${t.id}">Стол ${t.number} — мест: ${t.capacity}</option>`).join('');
-  $('sPlayers').innerHTML = players.items.map(p => `<option value="${p.id}">${esc(p.nickname)} — ${esc(p.name)}</option>`).join('');
-  const start = new Date(); start.setMinutes(0, 0, 0); start.setHours(start.getHours() + 1);
+  $('sGame').innerHTML = games.items.map(g =>
+    `<option value="${g.id}">${esc(g.title)} (${g.min_players}–${g.max_players} игроков, ${g.duration_min} мин)</option>`).join('');
+  $('sTable').innerHTML = tables.map(t =>
+    `<option value="${t.id}">Стол ${t.number}${t.description ? ' — '+esc(t.description) : ''} (мест ${t.capacity})</option>`).join('');
+  $('sPlayers').innerHTML = players.items.map(p =>
+    `<option value="${p.id}">${esc(p.nickname)} — ${esc(p.name)}</option>`).join('');
+  const start = new Date(); start.setMinutes(0,0,0); start.setHours(start.getHours()+1);
   $('sStart').value = toLocalInput(start);
   updateSessionEnd();
   modal('sessionModal').show();
@@ -460,17 +1048,17 @@ $('newSessionBtn').addEventListener('click', () => run(async () => {
 function updateSessionEnd() {
   const game = state.newSessionGames?.find(g => g.id === +$('sGame').value);
   if (!game || !$('sStart').value) return;
-  $('sEnd').value = toLocalInput(new Date(new Date($('sStart').value).getTime() + game.duration_min * 60000));
-  $('sHint').textContent = `Для этой игры нужно ${game.min_players}–${game.max_players} игроков`;
+  $('sEnd').value = toLocalInput(new Date(new Date($('sStart').value).getTime() + game.duration_min*60000));
+  $('sHint').innerHTML = `Нужно <b>${game.min_players}–${game.max_players}</b> игроков`;
 }
 $('sGame').addEventListener('change', updateSessionEnd);
 $('sStart').addEventListener('change', updateSessionEnd);
 
 $('sSave').addEventListener('click', () => run(async () => {
-  const s = await api('/sessions', {method: 'POST', body: {
-    game_id: +$('sGame').value, table_id: +$('sTable').value,
-    starts_at: $('sStart').value, ends_at: $('sEnd').value,
-    player_ids: [...$('sPlayers').selectedOptions].map(o => +o.value),
+  const s = await api('/sessions', {method:'POST', body:{
+    game_id:+$('sGame').value, table_id:+$('sTable').value,
+    starts_at:$('sStart').value, ends_at:$('sEnd').value,
+    player_ids:[...$('sPlayers').selectedOptions].map(o => +o.value),
   }});
   modal('sessionModal').hide();
   state.sessionId = s.id;
@@ -478,6 +1066,7 @@ $('sSave').addEventListener('click', () => run(async () => {
   loadSessions(1);
 }, 'Партия создана'));
 
+/* ============ ИГРЫ ============ */
 async function loadGenresInto(select, withAll) {
   const genres = await api('/genres');
   select.innerHTML = (withAll ? '<option value="">Все жанры</option>' : '') +
@@ -486,18 +1075,21 @@ async function loadGenresInto(select, withAll) {
 
 async function loadGames(page = state.gamesPage) {
   if (!$('gameGenre').options.length) await run(() => loadGenresInto($('gameGenre'), true));
-  const data = await run(() => api('/games?' + qs({search: $('gameSearch').value, genre_id: $('gameGenre').value,
-    players: $('gamePlayers').value, page})));
+  const data = await run(() => api('/games?' + qs({search:$('gameSearch').value, genre_id:$('gameGenre').value,
+    players:$('gamePlayers').value, page})));
   if (!data) return;
   state.gamesPage = data.page;
   renderTable($('gamesTable'), [
-    {key: 'title', title: 'Название'}, {key: 'genre', title: 'Жанр'},
-    {title: 'Игроков', html: r => `${r.min_players}–${r.max_players}`}, {key: 'duration_min', title: 'Мин'},
-    {key: 'complexity', title: 'Сложность', fmt: v => '★'.repeat(v)}, {key: 'copies', title: 'Копий'},
+    {key:'title', title:'Название', sortKey:'title'},
+    {key:'genre', title:'Жанр', sortKey:'genre'},
+    {title:'Игроков', html:r => `${r.min_players}–${r.max_players}`, sortKey:'min_players'},
+    {key:'duration_min', title:'Мин', sortKey:'duration_min'},
+    {key:'complexity', title:'Сложность', html:r => '<span class="text-warning">' + '★'.repeat(r.complexity) + '<span class="text-muted">' + '☆'.repeat(5-r.complexity) + '</span></span>', sortKey:'complexity'},
+    {key:'copies', title:'Копий', sortKey:'copies'},
   ], data.items, isAdmin() ? openGame : null);
   renderPager($('gamesPager'), data, loadGames);
 }
-['gameSearch', 'gamePlayers'].forEach(id => $(id).addEventListener('input', debounce(() => loadGames(1))));
+['gameSearch','gamePlayers'].forEach(id => $(id).addEventListener('input', debounce(() => loadGames(1))));
 $('gameGenre').addEventListener('change', () => loadGames(1));
 
 async function openGame(game) {
@@ -505,7 +1097,7 @@ async function openGame(game) {
   state.gameId = game?.id ?? null;
   $('gameModalTitle').textContent = game ? 'Редактирование игры' : 'Новая игра';
   $('gTitle').value = game?.title ?? '';
-  $('gGenre').value = game?.genre_id ?? $('gGenre').value;
+  $('gGenre').value = game?.genre_id ?? $('gGenre').options[0]?.value ?? '';
   $('gMin').value = game?.min_players ?? 2;
   $('gMax').value = game?.max_players ?? 4;
   $('gDuration').value = game?.duration_min ?? 60;
@@ -517,29 +1109,39 @@ async function openGame(game) {
 $('newGameBtn').addEventListener('click', () => openGame(null));
 
 $('gSave').addEventListener('click', () => run(async () => {
-  const body = {title: $('gTitle').value.trim(), genre_id: +$('gGenre').value, min_players: +$('gMin').value,
-    max_players: +$('gMax').value, duration_min: +$('gDuration').value, complexity: +$('gComplexity').value,
-    copies: +$('gCopies').value};
+  const body = {title:$('gTitle').value.trim(), genre_id:+$('gGenre').value, min_players:+$('gMin').value,
+    max_players:+$('gMax').value, duration_min:+$('gDuration').value, complexity:+$('gComplexity').value,
+    copies:+$('gCopies').value};
   if (!body.title) throw new Error('Введите название игры');
   await api(state.gameId ? '/games/' + state.gameId : '/games', {method: state.gameId ? 'PUT' : 'POST', body});
   modal('gameModal').hide();
   loadGames();
 }, 'Игра сохранена'));
 
-$('gDelete').addEventListener('click', () => confirm('Удалить игру?') && run(async () => {
-  await api('/games/' + state.gameId, {method: 'DELETE'});
-  modal('gameModal').hide();
-  loadGames();
-}, 'Игра удалена'));
+$('gDelete').addEventListener('click', async () => {
+  if (!await confirmDialog('Удалить игру? Если по ней есть незавершённые партии — удаление не пройдёт.', 'Удаление игры')) return;
+  run(async () => { await api('/games/' + state.gameId, {method:'DELETE'}); modal('gameModal').hide(); loadGames(); }, 'Игра удалена');
+});
 
+/* ============ ИГРОКИ ============ */
 async function loadPlayers(page = state.playersPage) {
-  const data = await run(() => api('/players?' + qs({search: $('playerSearch').value, active_only: !$('playerAll').checked, page})));
+  const data = await run(() => api('/players?' + qs({search:$('playerSearch').value, active_only:!$('playerAll').checked, page})));
   if (!data) return;
   state.playersPage = data.page;
   renderTable($('playersTable'), [
-    {key: 'nickname', title: 'Никнейм'}, {key: 'name', title: 'Имя'}, {key: 'rating', title: 'Рейтинг'},
-    {key: 'registered_at', title: 'Регистрация', fmt: fmtDate},
-    {title: 'Статус', html: r => r.is_active ? '<span class="badge bg-success">активен</span>' : '<span class="badge bg-secondary">неактивен</span>'},
+    {key:'nickname', title:'Никнейм', sortKey:'nickname'},
+    {key:'name', title:'Имя', sortKey:'name'},
+    {key:'rating', title:'Рейтинг', sortKey:'rating'},
+    {key:'registered_at', title:'Регистрация', fmt:fmtDate, sortKey:'registered_at'},
+    {title:'Статус', html:r => {
+      const now = new Date();
+      const tmpBan = r.banned_until && new Date(r.banned_until) > now;
+      if (!r.is_active)
+        return '<span class="badge bg-danger-subtle text-danger-emphasis"><i class="bi bi-slash-circle me-1"></i>забанен</span>';
+      if (tmpBan)
+        return `<span class="badge bg-warning-subtle text-warning-emphasis"><i class="bi bi-clock-history me-1"></i>бан до ${fmtDate(r.banned_until)}</span>`;
+      return '<span class="badge bg-success-subtle text-success-emphasis"><span class="dot dot-finished"></span>активен</span>';
+    }, sortKey:'is_active'},
   ], data.items, openPlayer);
   renderPager($('playersPager'), data, loadPlayers);
 }
@@ -551,68 +1153,176 @@ async function openPlayer(player) {
   $('playerModalTitle').textContent = player ? 'Карточка игрока' : 'Новый игрок';
   $('pName').value = player?.name ?? '';
   $('pNick').value = player?.nickname ?? '';
-  $('pDeactivate').classList.toggle('d-none', !player || !player.is_active);
+  const isBanned = player && (!player.is_active || (player.banned_until && new Date(player.banned_until) > new Date()));
+  $('pBanWeek').classList.toggle('d-none', !player || isBanned);
+  $('pBanFull').classList.toggle('d-none', !player || isBanned);
+  $('pActivate').classList.toggle('d-none', !player || !isBanned);
   $('playerCard').innerHTML = '';
   modal('playerModal').show();
   if (!player) return;
+
+  // Блок про бан
+  let banHtml = '';
+  if (isBanned) {
+    const until = player.banned_until ? `до ${fmtDT(player.banned_until)}` : 'бессрочно';
+    banHtml = `<div class="ban-info mb-3">
+      <b><i class="bi bi-slash-circle me-1"></i>Игрок забанен (${until})</b><br>
+      ${player.ban_reason ? esc(player.ban_reason) : '<i>причина не указана</i>'}
+    </div>`;
+  }
+
   const card = await run(() => api('/reports/player-card/' + player.id));
   if (!card) return;
+  const hist = card.history || [];
+  const favHtml = (card.favorite_games || []).map(f =>
+    `<div class="d-flex justify-content-between border-bottom py-1">
+      <span>${esc(f.game)}</span>
+      <span class="text-muted small">партий: <b>${f.sessions}</b> · побед: <b>${f.wins}</b></span>
+    </div>`).join('') || '<p class="small text-muted mb-0">Нет данных</p>';
+  const points = buildRatingPoints(card.history);
+
   $('playerCard').innerHTML = `
-    <h6>Динамика рейтинга</h6>${sparkline([1000, ...card.history.map(h => h.rating_after)]) || '<p class="small text-muted">Недостаточно партий</p>'}
-    <h6 class="mt-3">Любимые игры</h6>
-    <p class="small">${card.favorite_games.map(f => `${esc(f.game)} — партий: ${f.sessions}, побед: ${f.wins}`).join('<br>') || '—'}</p>
-    <h6>История партий</h6><table class="table table-sm" id="playerHistory"></table>`;
+    ${banHtml}
+    <div class="row g-2 mb-3">
+      <div class="col-6 col-md-3"><div class="stat"><div class="label">Рейтинг</div><div class="value">${card.player.rating}</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat"><div class="label">Партий</div><div class="value">${hist.length}</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat"><div class="label">Побед</div><div class="value">${hist.filter(h => h.place === 1).length}</div></div></div>
+      <div class="col-6 col-md-3"><div class="stat"><div class="label">Регистрация</div><div class="value fs-6">${fmtDate(card.player.registered_at)}</div></div></div>
+    </div>
+    <h6 class="text-muted small text-uppercase">Динамика рейтинга <span class="text-lowercase fw-normal">— наведите на точки</span></h6>
+    ${ratingChart(points) || '<p class="small text-muted">Недостаточно партий</p>'}
+    <h6 class="text-muted small text-uppercase mt-3">Любимые игры</h6>
+    <div class="mb-3">${favHtml}</div>
+    <h6 class="text-muted small text-uppercase">История партий</h6>
+    <div class="table-responsive"><table class="table table-sm" id="playerHistory"></table></div>`;
   renderTable($('playerHistory'), [
-    {key: 'starts_at', title: 'Дата', fmt: fmtDate}, {key: 'game', title: 'Игра'}, {key: 'score', title: 'Очки'},
-    {key: 'place', title: 'Место'}, {title: 'Δ', html: r => delta(r.rating_delta)}, {key: 'rating_after', title: 'Рейтинг после'},
-  ], [...card.history].reverse());
+    {key:'starts_at', title:'Дата', fmt:fmtDate, sortKey:'starts_at'},
+    {key:'game', title:'Игра', sortKey:'game'},
+    {key:'score', title:'Очки'},
+    {key:'place', title:'Место', html:r => placePill(r.place)},
+    {title:'Δ', html:r => delta(r.rating_delta), sortKey:'rating_delta'},
+    {key:'rating_after', title:'Рейтинг после', sortKey:'rating_after'},
+    {title:'Пришёл', html:r => r.attended == null ? '<span class="text-muted">—</span>'
+      : (r.attended ? '<i class="bi bi-check-circle-fill text-success"></i>'
+                    : '<i class="bi bi-x-circle-fill text-danger"></i>')},
+  ], [...hist].reverse());
 }
 $('newPlayerBtn').addEventListener('click', () => openPlayer(null));
 
 $('pSave').addEventListener('click', () => run(async () => {
-  const body = {name: $('pName').value.trim(), nickname: $('pNick').value.trim()};
+  const body = {name:$('pName').value.trim(), nickname:$('pNick').value.trim()};
   if (!body.name) throw new Error('Введите имя игрока');
   await api(state.playerId ? '/players/' + state.playerId : '/players', {method: state.playerId ? 'PUT' : 'POST', body});
   modal('playerModal').hide();
   loadPlayers();
 }, 'Игрок сохранён'));
 
-$('pDeactivate').addEventListener('click', () => confirm('Деактивировать игрока? История партий сохранится.') && run(async () => {
-  await api('/players/' + state.playerId, {method: 'DELETE'});
+/* --- Баны --- */
+function openBanModal(mode) {
+  state.banMode = mode;
+  $('banTitle').textContent = mode === 'week' ? 'Бан на неделю' : 'Полный бан игрока';
+  $('banHint').textContent = mode === 'week'
+    ? 'Игрок не сможет быть добавлен в партии в течение 7 дней. Рейтинг и история сохраняются.'
+    : 'Игрок будет деактивирован и исчезнет из публичного рейтинга. Потребуется ручной разбан.';
+  $('banReason').value = '';
+  modal('banModal').show();
+}
+$('pBanWeek').addEventListener('click', () => openBanModal('week'));
+$('pBanFull').addEventListener('click', () => openBanModal('full'));
+
+$('banConfirm').addEventListener('click', () => run(async () => {
+  const reason = $('banReason').value.trim();
+  if (!reason) throw new Error('Укажите причину бана');
+  const days = state.banMode === 'week' ? 7 : null;
+  await api(`/players/${state.playerId}/ban`, {method:'POST', body:{reason, days}});
+  modal('banModal').hide();
   modal('playerModal').hide();
   loadPlayers();
-}, 'Игрок деактивирован'));
+}, state.banMode === 'week' ? 'Игрок забанен на неделю' : 'Игрок полностью забанен'));
 
+$('pActivate').addEventListener('click', async () => {
+  if (!await confirmDialog('Снять бан и вернуть игрока к партиям?', 'Разбан')) return;
+  run(async () => {
+    await api(`/players/${state.playerId}/unban`, {method:'POST'});
+    modal('playerModal').hide();
+    loadPlayers();
+  }, 'Игрок разбанен');
+});
+
+/* ============ СПРАВОЧНИКИ ============ */
 async function loadDicts() {
-  const [tables, genres] = await run(() => Promise.all([api('/tables'), api('/genres')])) || [[], []];
-  const del = (path, msg) => b => b.addEventListener('click', () => confirm('Удалить?') &&
-    run(() => api(path + b.dataset.id, {method: 'DELETE'}), msg).then(loadDicts));
-  renderTable($('tablesTable'), [{key: 'number', title: 'Номер'}, {key: 'capacity', title: 'Мест'},
-    {title: '', html: r => `<button class="btn btn-link btn-sm text-danger p-0" data-table="${r.id}" data-id="${r.id}">удалить</button>`}], tables);
-  renderTable($('genresTable'), [{key: 'name', title: 'Название'},
-    {title: '', html: r => `<button class="btn btn-link btn-sm text-danger p-0" data-genre="${r.id}" data-id="${r.id}">удалить</button>`}], genres);
-  document.querySelectorAll('[data-table]').forEach(del('/tables/', 'Стол удалён'));
-  document.querySelectorAll('[data-genre]').forEach(del('/genres/', 'Жанр удалён'));
+  const [tables, genres] = await run(() => Promise.all([api('/tables'), api('/genres')])) || [[],[]];
+  renderTable($('tablesTable'), [
+    {key:'number', title:'Номер'},
+    {key:'capacity', title:'Мест'},
+    {key:'description', title:'Описание', fmt:v => v || '—'},
+    {title:'', html:r => `<div class="d-flex gap-1">
+      <button class="btn btn-link btn-sm text-primary p-0" data-edit="${r.id}"><i class="bi bi-pencil"></i></button>
+      <button class="btn btn-link btn-sm text-danger p-0" data-del="${r.id}"><i class="bi bi-trash"></i></button>
+    </div>`},
+  ], tables);
+  renderTable($('genresTable'), [
+    {key:'name', title:'Название'},
+    {title:'', html:r => `<button class="btn btn-link btn-sm text-danger p-0" data-del="${r.id}"><i class="bi bi-trash"></i></button>`},
+  ], genres);
+
+  document.querySelectorAll('#tablesTable [data-del]').forEach(b => b.addEventListener('click', async () => {
+    if (!await confirmDialog('Удалить стол?', 'Удаление стола')) return;
+    run(() => api('/tables/' + b.dataset.del, {method:'DELETE'}), 'Стол удалён').then(loadDicts);
+  }));
+  document.querySelectorAll('#tablesTable [data-edit]').forEach(b => b.addEventListener('click', () =>
+    openTable(tables.find(t => t.id === +b.dataset.edit))));
+  document.querySelectorAll('#genresTable [data-del]').forEach(b => b.addEventListener('click', async () => {
+    if (!await confirmDialog('Удалить жанр?', 'Удаление жанра')) return;
+    run(() => api('/genres/' + b.dataset.del, {method:'DELETE'}), 'Жанр удалён').then(loadDicts);
+  }));
 }
-$('addTableBtn').addEventListener('click', () => run(async () => {
-  await api('/tables', {method: 'POST', body: {number: +$('tableNumber').value, capacity: +$('tableCapacity').value}});
-  $('tableNumber').value = $('tableCapacity').value = '';
+
+function openTable(t) {
+  state.tableId = t?.id ?? null;
+  $('tableModalTitle').textContent = t ? 'Редактирование стола' : 'Новый стол';
+  $('tNumber').value = t?.number ?? '';
+  $('tCapacity').value = t?.capacity ?? 4;
+  $('tDesc').value = t?.description ?? '';
+  modal('tableModal').show();
+}
+$('addTableBtn').addEventListener('click', () => openTable(null));
+
+$('tSave').addEventListener('click', () => run(async () => {
+  const body = {
+    number: $('tNumber').value ? +$('tNumber').value : null,
+    capacity: +$('tCapacity').value,
+    description: $('tDesc').value.trim() || null,
+  };
+  if (!body.capacity || body.capacity < 2) throw new Error('Укажите вместимость стола (минимум 2)');
+  await api(state.tableId ? '/tables/' + state.tableId : '/tables',
+            {method: state.tableId ? 'PUT' : 'POST', body});
+  modal('tableModal').hide();
   loadDicts();
-}, 'Стол добавлен'));
+}, 'Стол сохранён'));
+
 $('addGenreBtn').addEventListener('click', () => run(async () => {
-  await api('/genres', {method: 'POST', body: {name: $('genreName').value.trim()}});
+  await api('/genres', {method:'POST', body:{name:$('genreName').value.trim()}});
   $('genreName').value = '';
   loadDicts();
 }, 'Жанр добавлен'));
 
+/* ============ ОТЧЁТЫ ============ */
 const REPORTS = {
-  'top-players': [{key: 'place', title: '#'}, {key: 'nickname', title: 'Никнейм'}, {key: 'rating', title: 'Рейтинг'},
-    {key: 'games_played', title: 'Партий'}, {key: 'wins', title: 'Побед'}, {key: 'win_pct', title: '% побед', fmt: v => v + '%'}],
-  'game-popularity': [{key: 'game', title: 'Игра'}, {key: 'genre', title: 'Жанр'}, {key: 'sessions', title: 'Партий'},
-    {key: 'unique_players', title: 'Уникальных игроков'}],
-  'table-load': [{key: 'table_number', title: 'Стол'}, {key: 'sessions', title: 'Партий'},
-    ...['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((k, i) => ({key: k, title: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i]})),
-    {key: 'total_hours', title: 'Всего, ч'}],
+  'top-players': [
+    {key:'place', title:'#'}, {key:'nickname', title:'Никнейм'}, {key:'rating', title:'Рейтинг'},
+    {key:'games_played', title:'Партий'}, {key:'wins', title:'Побед'},
+    {key:'win_pct', title:'% побед', fmt:v => v + '%'},
+  ],
+  'game-popularity': [
+    {key:'game', title:'Игра'}, {key:'genre', title:'Жанр'},
+    {key:'sessions', title:'Партий'}, {key:'unique_players', title:'Уникальных игроков'},
+  ],
+  'table-load': [
+    {key:'table_number', title:'Стол'}, {key:'sessions', title:'Партий'},
+    ...['mon','tue','wed','thu','fri','sat','sun'].map((k,i) => ({key:k, title:['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][i]})),
+    {key:'total_hours', title:'Всего, ч'},
+  ],
 };
 function syncReportParams() {
   const top = $('reportType').value === 'top-players';
@@ -622,13 +1332,26 @@ function syncReportParams() {
 async function loadReport() {
   syncReportParams();
   const type = $('reportType').value;
-  const params = type === 'top-players' ? {limit: $('reportLimit').value} : {date_from: $('reportFrom').value, date_to: $('reportTo').value};
+  const params = type === 'top-players'
+    ? {limit:$('reportLimit').value}
+    : {date_from:$('reportFrom').value, date_to:$('reportTo').value};
   const rows = await run(() => api(`/reports/${type}?` + qs(params)));
   if (rows) renderTable($('reportTable'), REPORTS[type], rows);
 }
 $('reportType').addEventListener('change', loadReport);
 $('reportBtn').addEventListener('click', loadReport);
 
+$('reportExportBtn').addEventListener('click', () => {
+  const type = $('reportType').value;
+  const params = type === 'top-players'
+    ? {limit:$('reportLimit').value}
+    : {date_from:$('reportFrom').value, date_to:$('reportTo').value};
+  const q = qs(params);
+  window.open(`/api/reports/${type}/csv?${q}`, '_blank');
+  toast('Экспорт запущен');
+});
+
+/* ============ СТАРТ ============ */
 setUser(state.token, state.user);
 showView(state.user ? 'sessions' : 'rating');
 </script>

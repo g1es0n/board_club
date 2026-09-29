@@ -12,6 +12,7 @@ def _check_found(cur, what: str):
         raise HTTPException(404, f"{what} не найден(а)")
 
 
+# ---------- Жанры ----------
 @router.get("/genres")
 def list_genres(db=Depends(staff_db)):
     return fetch_all(db, "SELECT id, name FROM genre ORDER BY name")
@@ -28,24 +29,38 @@ def delete_genre(genre_id: int, db=Depends(admin_db)):
     _check_found(execute(db, "DELETE FROM genre WHERE id = %s", [genre_id]), "Жанр")
 
 
+# ---------- Столы ----------
+TABLE_SELECT = "SELECT id, number, capacity, description FROM game_table"
+
+
 @router.get("/tables")
 def list_tables(db=Depends(staff_db)):
-    return fetch_all(db, "SELECT id, number, capacity FROM game_table ORDER BY number")
+    return fetch_all(db, TABLE_SELECT + " ORDER BY number")
 
 
 @router.post("/tables", status_code=201)
 def create_table(data: TableIn, db=Depends(admin_db)):
-    cur = execute(db, "INSERT INTO game_table (number, capacity) VALUES (%s, %s)", [data.number, data.capacity])
-    return {"id": cur.lastrowid, **data.model_dump()}
+    cur = execute(db, "INSERT INTO game_table (number, capacity, description) VALUES (%s, %s, %s)",
+                  [data.number, data.capacity, data.description])
+    new_id = cur.lastrowid
+    if data.number is None:
+        # По умолчанию номер = id (можно потом изменить через PUT)
+        execute(db, "UPDATE game_table SET number = %s WHERE id = %s", [new_id, new_id])
+    return fetch_one(db, TABLE_SELECT + " WHERE id = %s", [new_id])
 
 
 @router.put("/tables/{table_id}")
 def update_table(table_id: int, data: TableIn, db=Depends(admin_db)):
     if not fetch_one(db, "SELECT id FROM game_table WHERE id = %s", [table_id]):
         raise HTTPException(404, "Стол не найден")
-    execute(db, "UPDATE game_table SET number = %s, capacity = %s WHERE id = %s",
-            [data.number, data.capacity, table_id])
-    return {"id": table_id, **data.model_dump()}
+    execute(db, """
+        UPDATE game_table
+           SET number = COALESCE(%s, number),
+               capacity = %s,
+               description = %s
+         WHERE id = %s""",
+            [data.number, data.capacity, data.description, table_id])
+    return fetch_one(db, TABLE_SELECT + " WHERE id = %s", [table_id])
 
 
 @router.delete("/tables/{table_id}", status_code=204)
@@ -53,6 +68,7 @@ def delete_table(table_id: int, db=Depends(admin_db)):
     _check_found(execute(db, "DELETE FROM game_table WHERE id = %s", [table_id]), "Стол")
 
 
+# ---------- Игры ----------
 GAME_SELECT = """
     SELECT g.id, g.title, g.genre_id, gn.name AS genre, g.min_players, g.max_players,
            g.duration_min, g.complexity, g.copies

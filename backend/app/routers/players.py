@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..auth import staff_db
 from ..db import execute, fetch_all, fetch_one, paginate
-from ..schemas import PlayerIn
+from ..schemas import BanIn, PlayerIn
 
 router = APIRouter(prefix="/api/players", tags=["Игроки"])
 
-PLAYER_SELECT = "SELECT id, name, nickname, registered_at, rating, is_active FROM player"
+PLAYER_SELECT = ("SELECT id, name, nickname, registered_at, rating, is_active, "
+                 "banned_until, ban_reason FROM player")
 
 
 @router.get("")
@@ -50,8 +51,48 @@ def update_player(player_id: int, data: PlayerIn, db=Depends(staff_db)):
 
 @router.delete("/{player_id}")
 def deactivate_player(player_id: int, db=Depends(staff_db)):
+    """Мягкая деактивация (без указания причины)."""
     get_player(player_id, db)
     execute(db, "UPDATE player SET is_active = FALSE WHERE id = %s", [player_id])
+    return get_player(player_id, db)
+
+
+@router.post("/{player_id}/activate")
+def activate_player(player_id: int, db=Depends(staff_db)):
+    """Реактивация ранее деактивированного игрока."""
+    get_player(player_id, db)
+    execute(db, "UPDATE player SET is_active = TRUE, banned_until = NULL, ban_reason = NULL WHERE id = %s",
+            [player_id])
+    return get_player(player_id, db)
+
+
+@router.post("/{player_id}/ban")
+def ban_player(player_id: int, data: BanIn, db=Depends(staff_db)):
+    """
+    Бан игрока.
+    - Если указан `days` — временный бан: игрок не может быть добавлен в партии
+      до указанного момента, но остаётся активным (виден в рейтинге).
+    - Без `days` — полный бан: игрок деактивируется и пропадает из рейтинга.
+    """
+    get_player(player_id, db)
+    if data.days:
+        execute(db,
+                "UPDATE player SET banned_until = DATE_ADD(NOW(), INTERVAL %s DAY), ban_reason = %s WHERE id = %s",
+                [data.days, data.reason, player_id])
+    else:
+        execute(db,
+                "UPDATE player SET is_active = FALSE, banned_until = NULL, ban_reason = %s WHERE id = %s",
+                [data.reason, player_id])
+    return get_player(player_id, db)
+
+
+@router.post("/{player_id}/unban")
+def unban_player(player_id: int, db=Depends(staff_db)):
+    """Снимает любой бан (временный или полный)."""
+    get_player(player_id, db)
+    execute(db,
+            "UPDATE player SET is_active = TRUE, banned_until = NULL, ban_reason = NULL WHERE id = %s",
+            [player_id])
     return get_player(player_id, db)
 
 
@@ -60,7 +101,7 @@ def player_history(player_id: int, db=Depends(staff_db)):
     get_player(player_id, db)
     return fetch_all(db, """
         SELECT s.id AS session_id, s.starts_at, g.title AS game, s.status,
-               sp.score, sp.place, sp.rating_delta
+               sp.score, sp.place, sp.rating_delta, sp.attended
           FROM session_player sp
           JOIN session s ON s.id = sp.session_id
           JOIN game g    ON g.id = s.game_id
