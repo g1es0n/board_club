@@ -98,7 +98,6 @@ body { background: var(--bg); min-height: 100vh; }
 .toast { border-radius: 10px; }
 .brand-icon { font-size: 1.35rem; margin-right: .3rem; }
 
-/* Календарь */
 .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
 .cal-cell { background:#f8fafc; border-radius:8px; padding:6px; min-height:130px; }
 .cal-cell.today { background:#eef2ff; box-shadow: 0 0 0 2px #c7d2fe inset; }
@@ -511,6 +510,12 @@ body { background: var(--bg); min-height: 100vh; }
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+/* =========================================================
+   ДИАГНОСТИКА ОШИБОК
+   ========================================================= */
+window.addEventListener('unhandledrejection', e => console.error('Unhandled promise rejection:', e.reason));
+window.addEventListener('error', e => console.error('Global JS error:', e.error || e.message));
+
 const $ = id => document.getElementById(id);
 const state = {
   token: sessionStorage.getItem('token'),
@@ -518,7 +523,7 @@ const state = {
   sessionId: null, sessionsPage: 1, gamesPage: 1, playersPage: 1,
   gameId: null, playerId: null, tableId: null,
   sort: {},
-  banMode: null,     // 'week' | 'full'
+  banMode: null,
   calFrom: null, calTo: null,
 };
 const STATUS = {
@@ -540,8 +545,8 @@ const debounce = (fn, ms=300) => { let t; return (...a) => { clearTimeout(t); t 
 const placePill = p => p == null ? '' :
   `<span class="score-pill ${p===1?'place-1':p===2?'place-2':p===3?'place-3':''}">${p}</span>`;
 const toLocalInput = d => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16);
-const fromLocalInput = s => s ? new Date(s) : null;
 const isoDay = d => { const x = new Date(d); x.setHours(0,0,0,0); return x.toISOString().slice(0,10); };
+const isLocalDev = () => ['localhost','127.0.0.1'].includes(location.hostname);
 
 const loading = { n: 0, show(){ this.n++; $('loading').classList.add('show'); },
   hide(){ this.n = Math.max(0, this.n-1); if (!this.n) $('loading').classList.remove('show'); } };
@@ -552,10 +557,20 @@ async function api(path, {method='GET', body} = {}) {
   let res;
   try { res = await fetch('/api' + path, {method, headers, body: body ? JSON.stringify(body) : undefined}); }
   catch { throw new Error('Сервер недоступен, проверьте подключение'); }
+  if (isLocalDev()) console.debug(`API ${method} ${path} → ${res.status}`);
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
+  if (isLocalDev()) console.debug(`API ${path} payload:`, data);
   if (!res.ok) {
-    if (res.status === 401 && state.token) setUser(null, null);
+    if (res.status === 401 && state.token) {
+      setUser(null, null);
+      toast('Сессия истекла, войдите заново', false);
+      $('sessionDetail').innerHTML = `<div class="alert alert-warning">
+        <i class="bi bi-shield-exclamation me-1"></i>
+        Требуется вход в систему. Нажмите «Войти» в правом верхнем углу.
+      </div>`;
+      modal('loginModal').show();
+    }
     throw new Error(data.detail || `Ошибка ${res.status}`);
   }
   return data;
@@ -575,7 +590,7 @@ function toast(message, ok=true) {
 
 async function run(fn, okMsg) {
   try { loading.show(); const r = await fn(); if (okMsg) toast(okMsg); return r; }
-  catch (e) { toast(e.message, false); }
+  catch (e) { console.error('run error:', e); toast(e.message, false); }
   finally { loading.hide(); }
 }
 
@@ -593,33 +608,57 @@ function confirmDialog(text, title='Подтверждение') {
 }
 
 function renderTable(el, columns, rows, onRowClick, selectedKey) {
+  if (!el) { console.error('renderTable: элемент не найден'); return; }
+  rows = Array.isArray(rows) ? rows : [];
   const sort = state.sort[el.id];
+
   let data = [...rows];
-  if (sort) {
+  if (sort && sort.key && sort.dir) {
     const col = columns.find(c => (c.sortKey || c.key) === sort.key);
     const k = col?.sortKey || sort.key;
-    data.sort((a, b) => {
-      const va = a[k], vb = b[k];
-      if (va == null) return 1; if (vb == null) return -1;
-      const r = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb), 'ru');
-      return sort.dir === 'asc' ? r : -r;
-    });
+    if (k) {
+      data.sort((a, b) => {
+        const va = a[k], vb = b[k];
+        if (va == null) return 1;
+        if (vb == null) return -1;
+        const r = (typeof va === 'number' && typeof vb === 'number')
+          ? va - vb
+          : String(va).localeCompare(String(vb), 'ru');
+        return sort.dir === 'asc' ? r : -r;
+      });
+    }
   }
+
   const th = columns.map(c => {
     const sk = c.sortKey || c.key;
-    const cls = sort?.key === sk ? sort.dir : '';
-    return `<th ${sk ? `data-sort="${sk}" class="${cls}"` : ''}>${c.title}</th>`;
+    const active = !!(sort && sk && sort.key === sk);
+    const cls = active ? sort.dir : '';
+    return sk
+      ? `<th data-sort="${sk}" class="${cls}">${c.title}</th>`
+      : `<th>${c.title}</th>`;
   }).join('');
+
   el.innerHTML = `<thead><tr>${th}</tr></thead>
-    <tbody>${data.length ? data.map((r,i) => `<tr data-i="${i}" class="${selectedKey != null && r.id === selectedKey ? 'selected' : ''}">
-      ${columns.map(c => `<td>${c.html ? c.html(r) : esc(c.fmt ? c.fmt(r[c.key], r) : r[c.key])}</td>`).join('')}</tr>`).join('')
-      : `<tr><td colspan="${columns.length}"><div class="empty"><i class="bi bi-inbox"></i>Нет данных</div></td></tr>`}</tbody>`;
-  if (onRowClick) el.querySelectorAll('tbody tr[data-i]').forEach(tr =>
-    tr.addEventListener('click', e => { if (e.target.closest('button,input,select,a,textarea')) return; onRowClick(data[+tr.dataset.i]); }));
+    <tbody>${data.length
+      ? data.map((r, i) => `<tr data-i="${i}" class="${selectedKey != null && r.id === selectedKey ? 'selected' : ''}">
+          ${columns.map(c => `<td>${c.html ? c.html(r) : esc(c.fmt ? c.fmt(r[c.key], r) : r[c.key])}</td>`).join('')}
+        </tr>`).join('')
+      : `<tr><td colspan="${columns.length}"><div class="empty"><i class="bi bi-inbox"></i>Нет данных</div></td></tr>`}
+    </tbody>`;
+
+  if (onRowClick) {
+    el.querySelectorAll('tbody tr[data-i]').forEach(tr =>
+      tr.addEventListener('click', e => {
+        if (e.target.closest('button,input,select,a,textarea')) return;
+        onRowClick(data[+tr.dataset.i]);
+      }));
+  }
+
   el.querySelectorAll('th[data-sort]').forEach(th => th.addEventListener('click', () => {
     const k = th.dataset.sort;
     const cur = state.sort[el.id];
-    state.sort[el.id] = {key: k, dir: cur?.key === k && cur.dir === 'asc' ? 'desc' : 'asc'};
+    const isAsc = !!(cur && cur.key === k && cur.dir === 'asc');
+    state.sort[el.id] = {key: k, dir: isAsc ? 'desc' : 'asc'};
     renderTable(el, columns, rows, onRowClick, selectedKey);
   }));
 }
@@ -636,7 +675,6 @@ function renderPager(el, {total, page, size}, go) {
   el.querySelectorAll('button[data-p]').forEach(b => b.addEventListener('click', () => go(+b.dataset.p)));
 }
 
-/* Точечный график с tooltip */
 function ratingChart(points) {
   if (!points || points.length < 1) return '';
   if (points.length === 1) {
@@ -669,9 +707,8 @@ function ratingChart(points) {
     <span>мин. ${min}</span><span>макс. ${max}</span></div></div>`;
 }
 
-/* Построение точек графика по истории партий */
 function buildRatingPoints(history, initial = 1000) {
-  if (!history.length) return [];
+  if (!Array.isArray(history) || !history.length) return [];
   const sorted = [...history].sort((a, b) => new Date(a.starts_at) - new Date(b.starts_at));
   let acc = initial;
   return sorted.map(h => {
@@ -881,14 +918,41 @@ $('sessionDate').addEventListener('change', () => loadSessions(1));
 
 async function selectSession(id) {
   const s = await run(() => api('/sessions/' + id));
-  if (!s) return;
+  if (!s) {
+    console.error('selectSession: пустой ответ для id', id);
+    $('sessionDetail').innerHTML = `<div class="alert alert-warning">
+      Не удалось загрузить партию. Проверьте консоль (F12 → Console).
+    </div>`;
+    return;
+  }
   state.sessionId = id;
   renderSession(s);
   loadSessions();
 }
 
+/* Обёртка с try/catch, чтобы одна ошибка в теле не блокировала кнопки */
 function renderSession(s) {
-  const planned = s.status === 'planned', active = s.status === 'active', done = s.status === 'finished';
+  if (!s) { console.error('renderSession: пустой объект'); return; }
+  try {
+    renderSessionBody(s);
+  } catch (err) {
+    console.error('renderSession error:', err);
+    $('sessionDetail').innerHTML = `<div class="alert alert-danger">
+      <b>Не удалось отобразить партию</b><br>
+      <span class="small">${esc(err.message)}</span><br>
+      <span class="small text-muted">Откройте консоль (F12 → Console) — там подробности.</span>
+    </div>`;
+  }
+}
+
+function renderSessionBody(s) {
+  // Приводим players к массиву — на случай неожиданного ответа API
+  s.players = Array.isArray(s.players) ? s.players : [];
+
+  const planned = s.status === 'planned';
+  const active  = s.status === 'active';
+  const done    = s.status === 'finished';
+
   $('sessionDetail').innerHTML = `
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
       <div>
@@ -941,24 +1005,37 @@ function renderSession(s) {
     renderSession(await api(`/sessions/${s.id}${path}`, {method:'POST', body}));
   }, msg).then(() => loadSessions());
 
-  $('startBtn')?.addEventListener('click', async () => {
-    if (await confirmDialog('Начать партию?', 'Старт партии')) go('/start', 'Партия началась');
-  });
-  $('cancelBtn')?.addEventListener('click', async () => {
-    if (await confirmDialog('Отменить партию? Действие необратимо.', 'Отмена партии')) go('/cancel', 'Партия отменена');
-  });
+  const startBtn = $('startBtn');
+  if (startBtn) {
+    startBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      console.log('startBtn clicked for session', s.id);
+      if (await confirmDialog('Начать партию?', 'Старт партии')) go('/start', 'Партия началась');
+    });
+  }
+  const cancelBtn = $('cancelBtn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      console.log('cancelBtn clicked for session', s.id);
+      if (await confirmDialog('Отменить партию? Действие необратимо.', 'Отмена партии')) go('/cancel', 'Партия отменена');
+    });
+  }
 
   if (active) {
     const inputs = [...document.querySelectorAll('.score-input')];
     const scores = () => inputs.map(i => ({player_id:+i.dataset.player, score:+i.value}));
     const refresh = () => {
       inputs.forEach(i => i.classList.toggle('done', i.value !== ''));
-      $('finishBtn').disabled = inputs.some(i => i.value === '');
+      const finishBtn = $('finishBtn');
+      if (finishBtn) finishBtn.disabled = inputs.some(i => i.value === '');
     };
     inputs.forEach(i => i.addEventListener('input', refresh));
     refresh();
+
     $('saveScoresBtn').addEventListener('click', () => run(async () =>
       renderSession(await api(`/sessions/${s.id}/scores`, {method:'PUT', body:{scores:scores()}})), 'Очки сохранены'));
+
     $('finishBtn').addEventListener('click', () => run(async () => {
       await api(`/sessions/${s.id}/scores`, {method:'PUT', body:{scores:scores()}});
       renderSession(await api(`/sessions/${s.id}/finish`, {method:'POST'}));
@@ -982,18 +1059,25 @@ function renderSession(s) {
       run(async () => renderSession(await api(`/sessions/${s.id}/players/${b.dataset.remove}`, {method:'DELETE'})), 'Игрок убран')
         .then(() => loadSessions());
     }));
+
     run(async () => {
       const {items} = await api('/players?size=100');
       const inGame = new Set(s.players.map(p => p.player_id));
       const opts = items.filter(p => !inGame.has(p.id))
         .map(p => `<option value="${p.id}">${esc(p.nickname)} — ${esc(p.name)}</option>`).join('');
-      $('addPlayerSelect').innerHTML = opts || '<option disabled>Нет доступных игроков</option>';
+      const sel = $('addPlayerSelect');
+      if (sel) sel.innerHTML = opts || '<option disabled>Нет доступных игроков</option>';
     });
-    $('addPlayerBtn').addEventListener('click', () => run(async () =>
-      renderSession(await api(`/sessions/${s.id}/players`, {method:'POST', body:{player_id:+$('addPlayerSelect').value}})),
-      'Игрок добавлен').then(() => loadSessions()));
 
-    $('rescheduleBtn').addEventListener('click', () => openReschedule(s));
+    const addBtn = $('addPlayerBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => run(async () =>
+        renderSession(await api(`/sessions/${s.id}/players`, {method:'POST', body:{player_id:+$('addPlayerSelect').value}})),
+        'Игрок добавлен').then(() => loadSessions()));
+    }
+
+    const rsBtn = $('rescheduleBtn');
+    if (rsBtn) rsBtn.addEventListener('click', () => openReschedule(s));
   }
 }
 
@@ -1161,7 +1245,6 @@ async function openPlayer(player) {
   modal('playerModal').show();
   if (!player) return;
 
-  // Блок про бан
   let banHtml = '';
   if (isBanned) {
     const until = player.banned_until ? `до ${fmtDT(player.banned_until)}` : 'бессрочно';
@@ -1217,7 +1300,6 @@ $('pSave').addEventListener('click', () => run(async () => {
   loadPlayers();
 }, 'Игрок сохранён'));
 
-/* --- Баны --- */
 function openBanModal(mode) {
   state.banMode = mode;
   $('banTitle').textContent = mode === 'week' ? 'Бан на неделю' : 'Полный бан игрока';

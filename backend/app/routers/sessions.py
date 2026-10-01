@@ -1,6 +1,9 @@
 import json
 from datetime import date
 
+import logging
+log = logging.getLogger("board_club.sessions")
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..auth import staff_db, staff_user
@@ -48,12 +51,19 @@ def get_session(session_id: int, db=Depends(staff_db)):
     session = fetch_one(db, SESSION_SELECT + " WHERE s.id = %s", [session_id])
     if not session:
         raise HTTPException(404, "Партия не найдена")
-    session["players"] = fetch_all(db, """
-        SELECT p.id AS player_id, p.nickname, p.name, p.rating,
-               sp.score, sp.place, sp.rating_delta, sp.attended
-          FROM session_player sp JOIN player p ON p.id = sp.player_id
-         WHERE sp.session_id = %s
-         ORDER BY sp.place IS NULL, sp.place, p.nickname""", [session_id])
+
+    try:
+        players = fetch_all(db, """
+            SELECT p.id AS player_id, p.nickname, p.name, p.rating,
+                   sp.score, sp.place, sp.rating_delta, sp.attended
+              FROM session_player sp JOIN player p ON p.id = sp.player_id
+             WHERE sp.session_id = %s
+             ORDER BY sp.place IS NULL, sp.place, p.nickname""", [session_id])
+    except Exception as e:
+        log.exception("get_session(%s): не удалось получить участников: %s", session_id, e)
+        players = []
+
+    session["players"] = players if isinstance(players, list) else []
     return session
 
 
