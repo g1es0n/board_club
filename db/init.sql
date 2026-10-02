@@ -1,6 +1,5 @@
 SET NAMES utf8mb4;
 CREATE DATABASE board_club;
-
 USE board_club;
 
 CREATE TABLE genre (
@@ -32,13 +31,17 @@ CREATE TABLE player (
     registered_at DATE NOT NULL DEFAULT (CURRENT_DATE),
     rating INT NOT NULL DEFAULT 1000,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    INDEX idx_player_name (name)
+    banned_until DATETIME NULL,
+    ban_reason VARCHAR(512) NULL,
+    INDEX idx_player_name (name),
+    INDEX idx_player_banned (banned_until)
 );
 
 CREATE TABLE game_table (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    number INT NOT NULL UNIQUE,
+    number INT NULL UNIQUE,
     capacity TINYINT NOT NULL,
+    description VARCHAR(255) NULL,
     CONSTRAINT chk_table_capacity CHECK (capacity >= 2)
 );
 
@@ -71,37 +74,67 @@ CREATE TABLE session_player (
     score INT NULL,
     place TINYINT NULL,
     rating_delta INT NULL,
-    PRIMARY KEY (session_id, player_id), 
+    attended BOOLEAN NULL,
+    PRIMARY KEY (session_id, player_id),
     CONSTRAINT fk_sp_session FOREIGN KEY (session_id) REFERENCES session(id) ON DELETE CASCADE,
     CONSTRAINT fk_sp_player FOREIGN KEY (player_id)  REFERENCES player(id) ON DELETE RESTRICT,
     CONSTRAINT chk_sp_place CHECK (place IS NULL OR place >= 1),
     CONSTRAINT chk_sp_score CHECK (score IS NULL OR score >= 0)
 );
 
-
+-- ============================================================
+--  ТРИГГЕРЫ
+-- ============================================================
 DELIMITER //
+
+-- Проверки при добавлении игрока в партию
 CREATE TRIGGER trg_sp_before_insert BEFORE INSERT ON session_player
 FOR EACH ROW
 BEGIN
     DECLARE v_status VARCHAR(20);
     DECLARE v_max, v_cap, v_cnt INT;
     DECLARE v_active BOOLEAN;
+    DECLARE v_banned_until DATETIME;
+    DECLARE v_target_start, v_target_end DATETIME;
     DECLARE v_msg VARCHAR(255);
 
-    SELECT s.status, g.max_players, t.capacity
-      INTO v_status, v_max, v_cap
+    SELECT s.status, g.max_players, t.capacity, s.starts_at, s.ends_at
+      INTO v_status, v_max, v_cap, v_target_start, v_target_end
       FROM session s
       JOIN game g ON g.id = s.game_id
       JOIN game_table t ON t.id = s.table_id
      WHERE s.id = NEW.session_id;
 
+    IF v_status IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Партия не найдена';
+    END IF;
     IF v_status <> 'planned' THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Состав можно менять только у запланированной партии';
     END IF;
 
-    SELECT is_active INTO v_active FROM player WHERE id = NEW.player_id;
+    SELECT is_active, banned_until INTO v_active, v_banned_until
+      FROM player WHERE id = NEW.player_id;
+
     IF v_active = FALSE THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Игрок деактивирован и не может участвовать в партиях';
+    END IF;
+    IF v_banned_until IS NOT NULL AND v_banned_until > NOW() THEN
+        SET v_msg = CONCAT('Игрок забанен до ', DATE_FORMAT(v_banned_until, '%d.%m.%Y %H:%i'));
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msg;
+    END IF;
+
+    -- Игрок не должен быть в другой партии в пересекающееся время
+    IF EXISTS (
+        SELECT 1
+          FROM session_player sp
+          JOIN session s2 ON s2.id = sp.session_id
+         WHERE sp.player_id = NEW.player_id
+           AND s2.status IN ('planned','active')
+           AND s2.id <> NEW.session_id
+           AND s2.starts_at < v_target_end
+           AND s2.ends_at > v_target_start
+    ) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Игрок уже участвует в другой партии в это время';
     END IF;
 
     SELECT COUNT(*) INTO v_cnt FROM session_player WHERE session_id = NEW.session_id;
@@ -115,20 +148,31 @@ BEGIN
     END IF;
 END//
 
+-- Обновления в session_player: строгая блокировка результатов + attended
 CREATE TRIGGER trg_sp_before_update BEFORE UPDATE ON session_player
 FOR EACH ROW
 BEGIN
     DECLARE v_status VARCHAR(20);
     SELECT status INTO v_status FROM session WHERE id = NEW.session_id;
 
-    IF v_status = 'finished' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Результаты завершённой партии изменять нельзя';
+    IF NOT (NEW.score <=> OLD.score)
+       OR NOT (NEW.place <=> OLD.place)
+       OR NOT (NEW.rating_delta <=> OLD.rating_delta) THEN
+        IF v_status <> 'active' THEN
+            IF v_status = 'finished' THEN
+                SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Результаты завершённой партии изменять нельзя';
+            ELSE
+                SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Очки можно вводить только во время партии';
+            END IF;
+        END IF;
     END IF;
-    IF NOT (NEW.score <=> OLD.score) AND v_status <> 'active' THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Очки можно вводить только во время партии';
+
+    IF NOT (NEW.attended <=> OLD.attended) AND v_status NOT IN ('active','finished') THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Отметить посещаемость можно только у идущей или завершённой партии';
     END IF;
 END//
 
+-- Удаление участника — только у запланированной партии
 CREATE TRIGGER trg_sp_before_delete BEFORE DELETE ON session_player
 FOR EACH ROW
 BEGIN
@@ -139,14 +183,62 @@ BEGIN
     END IF;
 END//
 
+-- Обновление партии: запрет изменять завершённые/отменённые + защита от конфликтов при переносе
 CREATE TRIGGER trg_session_before_update BEFORE UPDATE ON session
 FOR EACH ROW
 BEGIN
+    DECLARE v_copies INT;
+
     IF OLD.status IN ('finished', 'cancelled') THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Завершённую или отменённую партию изменять нельзя';
     END IF;
+
+    IF NEW.status IN ('planned','active')
+       AND (NEW.starts_at <> OLD.starts_at
+            OR NEW.ends_at <> OLD.ends_at
+            OR NEW.table_id <> OLD.table_id) THEN
+
+        -- Стол занят в новое время?
+        IF EXISTS (
+            SELECT 1 FROM session
+             WHERE table_id = NEW.table_id
+               AND id <> NEW.id
+               AND status IN ('planned','active')
+               AND starts_at < NEW.ends_at
+               AND ends_at > NEW.starts_at
+        ) THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Стол занят в это время, выберите другой';
+        END IF;
+
+        -- Копии игры не должны быть исчерпаны
+        SELECT copies INTO v_copies FROM game WHERE id = NEW.game_id;
+        IF (SELECT COUNT(*) FROM session
+             WHERE game_id = NEW.game_id
+               AND id <> NEW.id
+               AND status IN ('planned','active')
+               AND starts_at < NEW.ends_at
+               AND ends_at > NEW.starts_at) >= v_copies THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Свободных копий игры на это время нет';
+        END IF;
+
+        -- Участники партии не должны быть заняты в других партиях
+        IF EXISTS (
+            SELECT 1
+              FROM session_player sp_target
+              JOIN session_player sp_other ON sp_other.player_id = sp_target.player_id
+              JOIN session s_other ON s_other.id = sp_other.session_id
+             WHERE sp_target.session_id = NEW.id
+               AND s_other.id <> NEW.id
+               AND s_other.status IN ('planned','active')
+               AND s_other.starts_at < NEW.ends_at
+               AND s_other.ends_at > NEW.starts_at
+        ) THEN
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Некоторые участники заняты в это время';
+        END IF;
+    END IF;
 END//
 
+-- Нельзя удалить игру, по которой есть незавершённые партии
 CREATE TRIGGER trg_game_before_delete BEFORE DELETE ON game
 FOR EACH ROW
 BEGIN
@@ -156,7 +248,10 @@ BEGIN
     END IF;
 END//
 
--- Создание партии с участниками одной транзакцией
+-- ============================================================
+--  ХРАНИМЫЕ ПРОЦЕДУРЫ
+-- ============================================================
+
 CREATE PROCEDURE sp_create_session(
     IN p_game_id INT, IN p_table_id INT, IN p_host_id INT,
     IN p_starts DATETIME, IN p_ends DATETIME, IN p_players JSON)
@@ -216,7 +311,6 @@ BEGIN
     SELECT v_id AS id;
 END//
 
--- Начало партии: только из статуса «Запланирована» и при достаточном числе игроков
 CREATE PROCEDURE sp_start_session(IN p_session_id INT)
 BEGIN
     DECLARE v_status VARCHAR(20);
@@ -243,7 +337,6 @@ BEGIN
     UPDATE session SET status = 'active' WHERE id = p_session_id;
 END//
 
--- Завершение партии: места, изменения рейтинга, статус — всё или ничего
 CREATE PROCEDURE sp_finish_session(IN p_session_id INT)
 BEGIN
     DECLARE v_status VARCHAR(20);
@@ -269,8 +362,10 @@ BEGIN
 
     SELECT COUNT(*) INTO v_n FROM session_player WHERE session_id = p_session_id;
 
+    -- ROW_NUMBER гарантирует уникальные места (сумма ΔR = 0 по BR-08)
     UPDATE session_player sp
-      JOIN (SELECT player_id, CAST(RANK() OVER (ORDER BY score DESC) AS SIGNED) AS rk
+      JOIN (SELECT player_id,
+                   CAST(ROW_NUMBER() OVER (ORDER BY score DESC, player_id ASC) AS SIGNED) AS rk
               FROM session_player WHERE session_id = p_session_id) r
         ON r.player_id = sp.player_id
        SET sp.place = r.rk,
@@ -289,7 +384,9 @@ END//
 
 DELIMITER ;
 
--- Представления для публичного рейтинга
+-- ============================================================
+--  ПРЕДСТАВЛЕНИЯ
+-- ============================================================
 CREATE VIEW v_player_rating AS
 SELECT RANK() OVER (ORDER BY p.rating DESC)           AS place,
        p.nickname,
@@ -320,7 +417,9 @@ SELECT p.nickname,
   JOIN game g    ON g.id = s.game_id
  WHERE s.status = 'finished' AND p.is_active;
 
--- Пользователи
+-- ============================================================
+--  ПРАВА
+-- ============================================================
 DROP USER IF EXISTS 'club_admin'@'%', 'club_host'@'%', 'club_viewer'@'%';
 CREATE USER IF NOT EXISTS 'club_admin'@'%'  IDENTIFIED BY 'admin_pass';
 CREATE USER IF NOT EXISTS 'club_host'@'%'   IDENTIFIED BY 'host_pass';
@@ -329,7 +428,6 @@ CREATE USER IF NOT EXISTS 'club_viewer'@'%' IDENTIFIED BY 'viewer_pass';
 GRANT ALL PRIVILEGES ON board_club.* TO 'club_admin'@'%';
 
 GRANT SELECT ON board_club.genre TO 'club_host'@'%';
-
 GRANT SELECT ON board_club.game  TO 'club_host'@'%';
 GRANT SELECT ON board_club.game_table TO 'club_host'@'%';
 GRANT SELECT (id, full_name, role) ON board_club.staff TO 'club_host'@'%';
@@ -347,10 +445,17 @@ GRANT SELECT ON board_club.v_player_history TO 'club_viewer'@'%';
 
 FLUSH PRIVILEGES;
 
--- Тестовые данные
+-- ============================================================
+--  ТЕСТОВЫЕ ДАННЫЕ
+-- ============================================================
 INSERT INTO genre (name) VALUES ('Стратегия'), ('Пати'), ('Кооператив'), ('Карточная'), ('Семейная');
 
-INSERT INTO game_table (number, capacity) VALUES (1, 4), (2, 4), (3, 6), (4, 6), (5, 8);
+INSERT INTO game_table (number, capacity, description) VALUES
+ (1, 4, 'Стол у входа'),
+ (2, 4, 'Стол у окна'),
+ (3, 6, 'Стол в центре зала'),
+ (4, 6, 'Стол на веранде'),
+ (5, 8, 'Большой стол (для пати-игр)');
 
 INSERT INTO game (genre_id, title, min_players, max_players, duration_min, complexity, copies) VALUES
  (1, 'Каркассон',           2, 5,  45, 2, 2),
@@ -379,14 +484,16 @@ INSERT INTO player (name, nickname, registered_at) VALUES
  ('Сергей Морозов',   'frost',       '2026-07-20'),
  ('Наталья Лебедева', 'swan',        '2026-08-02');
 
--- Три сыгранные партии проходят полный цикл через процедуры, чтобы рейтинг был посчитан честно
+-- Партия 1 (завершена)
 CALL sp_create_session(1, 1, 2, '2026-09-05 18:00', '2026-09-05 19:00', '[1, 2, 3, 4]');
 SET @s = LAST_INSERT_ID();
 CALL sp_start_session(@s);
 UPDATE session_player SET score = CASE player_id WHEN 1 THEN 112 WHEN 2 THEN 98 WHEN 3 THEN 87 ELSE 64 END
  WHERE session_id = @s;
 CALL sp_finish_session(@s);
+UPDATE session_player SET attended = TRUE WHERE session_id = @s;
 
+-- Партия 2 (завершена)
 CALL sp_create_session(4, 5, 2, '2026-09-12 19:00', '2026-09-12 19:30', '[2, 4, 5, 6, 7, 8]');
 SET @s = LAST_INSERT_ID();
 CALL sp_start_session(@s);
@@ -394,13 +501,18 @@ UPDATE session_player SET score = CASE player_id WHEN 2 THEN 9 WHEN 4 THEN 9 WHE
                                                WHEN 6 THEN 5 WHEN 7 THEN 4 ELSE 2 END
  WHERE session_id = @s;
 CALL sp_finish_session(@s);
+-- Один игрок "не пришёл" — для демонстрации
+UPDATE session_player SET attended = TRUE WHERE session_id = @s;
+UPDATE session_player SET attended = FALSE WHERE session_id = @s AND player_id = 8;
 
+-- Партия 3 (завершена)
 CALL sp_create_session(6, 2, 1, '2026-09-19 17:00', '2026-09-19 18:30', '[1, 3, 5]');
 SET @s = LAST_INSERT_ID();
 CALL sp_start_session(@s);
 UPDATE session_player SET score = CASE player_id WHEN 1 THEN 3 WHEN 3 THEN 7 ELSE 5 END
  WHERE session_id = @s;
 CALL sp_finish_session(@s);
+UPDATE session_player SET attended = TRUE WHERE session_id = @s;
 
--- Одна запланированная партия на будущее
+-- Партия 4 (запланирована)
 CALL sp_create_session(2, 3, 2, '2026-10-03 18:00', '2026-10-03 19:30', '[2, 6, 7]');

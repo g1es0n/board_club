@@ -13,8 +13,9 @@ class GenreIn(BaseModel):
 
 
 class TableIn(BaseModel):
-    number: int = Field(ge=1, le=999)
+    number: int | None = Field(None, ge=1, le=999)
     capacity: int = Field(ge=2, le=20)
+    description: str | None = Field(None, max_length=255)
 
 
 class GameIn(BaseModel):
@@ -54,6 +55,21 @@ class SessionIn(BaseModel):
         return self
 
 
+class RescheduleIn(BaseModel):
+    starts_at: datetime
+    ends_at: datetime
+    table_id: int
+    player_ids: list[int] = Field(min_length=1, max_length=20)
+
+    @model_validator(mode="after")
+    def check(self):
+        if self.ends_at <= self.starts_at:
+            raise ValueError("Время окончания должно быть позже времени начала")
+        if len(set(self.player_ids)) != len(self.player_ids):
+            raise ValueError("Игрок указан в партии дважды")
+        return self
+
+
 class PlayerRef(BaseModel):
     player_id: int
 
@@ -65,3 +81,17 @@ class ScoreItem(BaseModel):
 
 class ScoresIn(BaseModel):
     scores: list[ScoreItem] = Field(min_length=1)
+
+
+class AttendanceItem(BaseModel):
+    player_id: int
+    attended: bool
+
+
+class AttendanceIn(BaseModel):
+    attendance: list[AttendanceItem] = Field(min_length=1)
+
+
+class BanIn(BaseModel):
+    reason: str = Field(min_length=1, max_length=512)
+    days: int | None = Field(None, ge=1, le=365)

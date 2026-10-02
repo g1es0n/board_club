@@ -60,12 +60,13 @@ def table_load(date_from: date | None = None, date_to: date | None = None, db=De
 
 @router.get("/reports/player-card/{player_id}")
 def player_card(player_id: int, db=Depends(staff_db)):
-    player = fetch_one(db, "SELECT id, name, nickname, rating, registered_at, is_active FROM player WHERE id = %s",
-                       [player_id])
+    player = fetch_one(db,
+        "SELECT id, name, nickname, rating, registered_at, is_active, banned_until, ban_reason "
+        "FROM player WHERE id = %s", [player_id])
     if not player:
         raise HTTPException(404, "Игрок не найден")
     history = fetch_all(db, """
-        SELECT s.starts_at, g.title AS game, sp.score, sp.place, sp.rating_delta,
+        SELECT s.starts_at, g.title AS game, sp.score, sp.place, sp.rating_delta, sp.attended,
                1000 + SUM(sp.rating_delta) OVER (ORDER BY s.starts_at, s.id) AS rating_after
           FROM session_player sp
           JOIN session s ON s.id = sp.session_id
@@ -84,6 +85,7 @@ def player_card(player_id: int, db=Depends(staff_db)):
     return {"player": player, "history": history, "favorite_games": favorite}
 
 
+# ---------- Публичный рейтинг ----------
 @router.get("/public/rating", tags=["Публичный рейтинг"])
 def public_rating(search: str | None = None, db=Depends(public_db)):
     if search:
