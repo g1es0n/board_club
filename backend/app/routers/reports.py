@@ -1,9 +1,6 @@
-import csv
-import io
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
 
 from ..auth import public_db, staff_db
 from ..db import fetch_all, fetch_one
@@ -86,38 +83,6 @@ def player_card(player_id: int, db=Depends(staff_db)):
          ORDER BY sessions DESC, wins DESC
          LIMIT 3""", [player_id])
     return {"player": player, "history": history, "favorite_games": favorite}
-
-
-# ---------- CSV экспорт ----------
-def _csv_response(rows: list[dict], filename: str) -> StreamingResponse:
-    if not rows:
-        rows = [{"info": "нет данных"}]
-    buf = io.StringIO()
-    w = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
-    w.writeheader()
-    w.writerows(rows)
-    buf.seek(0)
-    return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv; charset=utf-8",
-                             headers={"Content-Disposition": f'attachment; filename="{filename}"'})
-
-
-@router.get("/reports/{report_name}/csv")
-def report_csv(
-    report_name: str,
-    limit: int = Query(100, ge=1, le=1000),
-    date_from: date | None = None,
-    date_to: date | None = None,
-    db=Depends(staff_db),
-):
-    if report_name == "top-players":
-        rows = top_players(limit, db)
-    elif report_name == "game-popularity":
-        rows = game_popularity(date_from, date_to, db)
-    elif report_name == "table-load":
-        rows = table_load(date_from, date_to, db)
-    else:
-        raise HTTPException(404, "Неизвестный отчёт")
-    return _csv_response(rows, f"{report_name}.csv")
 
 
 # ---------- Публичный рейтинг ----------
